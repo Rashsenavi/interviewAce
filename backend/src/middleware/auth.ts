@@ -19,9 +19,20 @@ export const authenticate = (
   next: NextFunction
 ) => {
   try {
-    const authHeader = req.headers.authorization;
+    let token: string | undefined;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    // Check Authorization header first
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7);
+    }
+
+    // If no Authorization header, check cookie
+    if (!token && req.cookies && req.cookies.token) {
+      token = req.cookies.token;
+    }
+
+    if (!token) {
       return res.status(401).json({
         success: false,
         error: {
@@ -31,7 +42,6 @@ export const authenticate = (
       });
     }
 
-    const token = authHeader.substring(7);
     const payload = verifyToken(token);
     req.user = payload;
 

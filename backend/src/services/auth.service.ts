@@ -31,6 +31,8 @@ export interface RegisterInterviewerInput {
   linkedinProfile: string;
   hourlyRate: number;
   bio?: string;
+  nicUrl?: string;
+  appointmentLetterUrl?: string;
 }
 
 export interface LoginInput {
@@ -158,6 +160,8 @@ export const registerInterviewer = async (input: RegisterInterviewerInput): Prom
     linkedinProfile: input.linkedinProfile,
     hourlyRate: input.hourlyRate.toString(),
     bio: input.bio,
+    nicUrl: input.nicUrl,
+    appointmentLetterUrl: input.appointmentLetterUrl,
   });
 
   // Generate token

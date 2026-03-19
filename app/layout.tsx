@@ -1,4 +1,5 @@
 import "./globals.css";
+import { AuthProvider } from "@/lib/context/AuthContext";
 
 export const metadata = {
   title: "InterviewAce - Ace Your Next Interview",
@@ -12,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

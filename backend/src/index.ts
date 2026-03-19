@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 
 // Load environment variables
 dotenv.config({ path: ".env.local" });
@@ -18,19 +19,37 @@ import adminRoutes from "./routes/admin.routes";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
-
+3
 const app: Express = express();
 const PORT = process.env.PORT || 3001;
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost",
+  "http://127.0.0.1",
+].filter(Boolean) as string[];
 
 // Middleware
 app.use(helmet());
 app.use(morgan("combined"));
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow non-browser clients and same-origin requests.
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Health check endpoint
 app.get("/health", (req: Request, res: Response) => {

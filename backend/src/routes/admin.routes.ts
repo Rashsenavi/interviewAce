@@ -1,5 +1,11 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth";
+import {
+  getPendingVerifications,
+  getVerificationDetails,
+  approveVerification,
+  rejectVerification,
+} from "../controllers/admin.controller";
 
 const router = Router();
 
@@ -7,37 +13,25 @@ const router = Router();
  * GET /api/admin/verification/pending
  * Get pending interviewer verifications
  */
-router.get("/verification/pending", authenticate, authorize("admin"), async (req, res) => {
-  // TODO: Implement get pending verifications
-  res.json({ message: "Get pending verifications" });
-});
+router.get("/verification/pending", authenticate, authorize("admin"), getPendingVerifications);
 
 /**
  * GET /api/admin/verification/:interviewerId
  * Get verification details for interviewer
  */
-router.get("/verification/:interviewerId", authenticate, authorize("admin"), async (req, res) => {
-  // TODO: Implement get verification details
-  res.json({ message: "Get verification details" });
-});
+router.get("/verification/:interviewerId", authenticate, authorize("admin"), getVerificationDetails);
 
 /**
  * PUT /api/admin/verification/:interviewerId/approve
  * Approve interviewer verification
  */
-router.put("/verification/:interviewerId/approve", authenticate, authorize("admin"), async (req, res) => {
-  // TODO: Implement approve verification
-  res.json({ message: "Approve verification" });
-});
+router.put("/verification/:interviewerId/approve", authenticate, authorize("admin"), approveVerification);
 
 /**
  * PUT /api/admin/verification/:interviewerId/reject
  * Reject interviewer verification
  */
-router.put("/verification/:interviewerId/reject", authenticate, authorize("admin"), async (req, res) => {
-  // TODO: Implement reject verification
-  res.json({ message: "Reject verification" });
-});
+router.put("/verification/:interviewerId/reject", authenticate, authorize("admin"), rejectVerification);
 
 /**
  * GET /api/admin/analytics

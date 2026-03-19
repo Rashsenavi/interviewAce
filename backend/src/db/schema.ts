@@ -126,6 +126,8 @@ export const interviewers = pgTable("interviewers", {
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("20"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  nicUrl: text("nic_url"),
+  appointmentLetterUrl: text("appointment_letter_url"),
 });
 
 // Admins Table

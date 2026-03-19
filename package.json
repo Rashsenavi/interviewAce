@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:all": "concurrently -n frontend,backend -c cyan,magenta \"npm run dev\" \"npm run dev:backend\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -13,9 +15,12 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "@types/express": "^5.0.6",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
+    "express": "^5.2.1",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
     "postgres": "^3.4.7",
@@ -25,9 +30,11 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/node": "^20",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.3",
+    "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",

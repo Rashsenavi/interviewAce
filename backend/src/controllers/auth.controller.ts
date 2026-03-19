@@ -29,6 +29,8 @@ const registerInterviewerSchema = z.object({
   linkedinProfile: z.string().url("Invalid LinkedIn URL"),
   hourlyRate: z.number().min(0, "Hourly rate must be positive"),
   bio: z.string().optional(),
+  nicUrl: z.string().optional(),
+  appointmentLetterUrl: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -76,7 +78,6 @@ export const registerInterviewer = async (req: Request, res: Response) => {
   try {
     // Validate input
     const validatedData = registerInterviewerSchema.parse(req.body);
-
     // Register user
     const result = await authService.registerInterviewer(validatedData);
 

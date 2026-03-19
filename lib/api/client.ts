@@ -86,6 +86,7 @@ class ApiClient {
    */
   async post<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
     try {
+      console.log(`[API] POST ${API_BASE_URL}${endpoint}`, JSON.stringify(data, null, 2));
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
         headers: this.getHeaders(),
@@ -93,8 +94,23 @@ class ApiClient {
         credentials: "include",
       });
 
-      return await response.json();
+      const result = await response.json();
+      console.log(`[API] Response (status ${response.status}):`, JSON.stringify(result, null, 2));
+      
+      // If HTTP error but valid JSON error response, return it
+      if (!response.ok && !result.error) {
+        return {
+          success: false,
+          error: {
+            code: "HTTP_ERROR",
+            message: result.message || `HTTP error ${response.status}`,
+          },
+        };
+      }
+      
+      return result;
     } catch (error) {
+      console.error(`[API] Error:`, error);
       return {
         success: false,
         error: {

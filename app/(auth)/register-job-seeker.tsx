@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authService } from "@/lib/api/auth";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
 
 const INDUSTRIES = [
   "IT & Software",
@@ -19,6 +20,7 @@ const INDUSTRIES = [
 
 export default function JobSeekerRegisterPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -75,8 +77,8 @@ export default function JobSeekerRegisterPage() {
         setError("Passwords do not match");
         return false;
       }
-      if (formData.password.length < 6) {
-        setError("Password must be at least 6 characters");
+      if (formData.password.length < 8) {
+        setError("Password must be at least 8 characters");
         return false;
       }
     }
@@ -133,48 +135,67 @@ export default function JobSeekerRegisterPage() {
         careerGoals: formData.careerGoals,
       });
 
-      if (response.success) {
+      if (response.success && response.user && response.token) {
+        // Store user data in context
+        login(response.token, response.user);
         router.push("/job-seeker");
       } else {
-        setError(response.error?.message || "Registration failed. Please try again.");
+        const errorMsg = response.error?.message || "Registration failed. Please try again.";
+        setError(errorMsg);
+        console.error("Registration error:", response.error);
       }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
+    } catch (err: any) {
+      console.error("Registration exception:", err);
+      setError(err?.message || "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-2xl">
-        {/* Back to Home Link */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 px-4 py-8 md:px-6 md:py-10">
+      <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6">
-          <Link 
-            href="/" 
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
+          <Link
+            href="/"
+            className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700"
           >
             <ArrowLeft size={16} className="mr-1" />
             Back to Home
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-12">
+        <div className="grid gap-6 lg:grid-cols-[1fr_1.45fr]">
+          <aside className="hidden rounded-3xl border border-slate-200 bg-slate-900 p-8 text-white shadow-[0_20px_55px_-38px_rgba(15,23,42,0.55)] lg:block">
+            <h2 className="text-3xl font-bold leading-tight">Build confidence before your first round.</h2>
+            <p className="mt-4 text-sm leading-relaxed text-slate-300">
+              Create your profile once and book interview sessions with verified professionals who
+              match your target industry.
+            </p>
+
+            <div className="mt-8 space-y-3 text-sm text-slate-300">
+              <p>Targeted mock interviews</p>
+              <p>Feedback that is easy to act on</p>
+              <p>Progress tracking over time</p>
+            </div>
+          </aside>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_20px_55px_-42px_rgba(15,23,42,0.4)] sm:p-8 lg:p-10">
           {/* Header */}
-          <div className="text-center mb-12">
+          <div className="mb-10 text-center">
             <div className="inline-flex items-center justify-center w-14 h-14 bg-teal-600 text-white rounded-lg mb-6 text-xl font-bold">
               👤
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Your Account</h1>
-            <p className="text-gray-600 text-base">Join 500+ students preparing for their dream jobs</p>
+            <h1 className="mb-2 text-3xl font-bold text-slate-900">Create Your Account</h1>
+            <p className="text-base text-slate-600">Join 500+ students preparing for their dream jobs</p>
           </div>
 
           {/* Step Indicator */}
-          <div className="flex items-center justify-center mb-12 gap-6">
+          <div className="mb-10 flex items-center justify-center gap-3 sm:gap-6">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex items-center">
                 <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base transition-colors ${
+                  className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold text-sm transition-colors sm:h-12 sm:w-12 sm:text-base ${
                     step === currentStep
                       ? "bg-teal-600 text-white"
                       : step < currentStep
@@ -186,7 +207,7 @@ export default function JobSeekerRegisterPage() {
                 </div>
                 {step < 3 && (
                   <div
-                    className={`w-16 h-1 mx-3 transition-colors ${
+                    className={`h-1 w-10 mx-2 transition-colors sm:w-16 sm:mx-3 ${
                       step < currentStep ? "bg-teal-600" : "bg-gray-200"
                     }`}
                   ></div>
@@ -196,7 +217,7 @@ export default function JobSeekerRegisterPage() {
           </div>
 
           {/* Step Labels */}
-          <div className="flex justify-between mb-12 text-sm font-semibold">
+          <div className="mb-10 flex justify-between text-xs font-semibold sm:text-sm">
             <div className={`text-center ${currentStep === 1 ? "text-teal-600" : "text-gray-500"}`}>
               Account
             </div>
@@ -210,7 +231,7 @@ export default function JobSeekerRegisterPage() {
 
           {/* Error Message */}
           {error && !error.includes("pattern") && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
               <p className="text-red-700 text-sm">{error}</p>
             </div>
           )}
@@ -219,7 +240,7 @@ export default function JobSeekerRegisterPage() {
             {/* Step 1: Account */}
             {currentStep === 1 && (
               <div className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
                       First Name *
@@ -230,7 +251,7 @@ export default function JobSeekerRegisterPage() {
                       value={formData.firstName}
                       onChange={handleInputChange}
                       placeholder="Kasun"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                     />
                   </div>
                   <div>
@@ -243,7 +264,7 @@ export default function JobSeekerRegisterPage() {
                       value={formData.lastName}
                       onChange={handleInputChange}
                       placeholder="Perera"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                     />
                   </div>
                 </div>
@@ -258,7 +279,7 @@ export default function JobSeekerRegisterPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="kasun@example.com"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                   />
                 </div>
 
@@ -273,12 +294,12 @@ export default function JobSeekerRegisterPage() {
                       value={formData.password}
                       onChange={handleInputChange}
                       placeholder="Create a strong password"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3.5 text-gray-500 hover:text-gray-700"
+                      className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-700"
                     >
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
@@ -296,12 +317,12 @@ export default function JobSeekerRegisterPage() {
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
                       placeholder="Re-enter your password"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-3.5 text-gray-500 hover:text-gray-700"
+                      className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-700"
                     >
                       {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
@@ -318,7 +339,7 @@ export default function JobSeekerRegisterPage() {
                     Phone Number *
                   </label>
                   <div className="flex gap-3">
-                    <select className="px-3 py-3 border border-gray-300 rounded-lg bg-white w-24 text-base font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <select className="w-24 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base font-medium text-slate-700 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100">
                       <option>+94</option>
                     </select>
                     <input
@@ -327,7 +348,7 @@ export default function JobSeekerRegisterPage() {
                       value={formData.phoneNumber}
                       onChange={handleInputChange}
                       placeholder="77 123 4567"
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                      className="flex-1 rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                     />
                   </div>
                 </div>
@@ -341,11 +362,11 @@ export default function JobSeekerRegisterPage() {
                     name="university"
                     value={formData.university}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
                       Graduation Year *
@@ -356,7 +377,7 @@ export default function JobSeekerRegisterPage() {
                       value={formData.graduationYear}
                       onChange={handleInputChange}
                       placeholder="2024"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                     />
                   </div>
                   <div>
@@ -369,7 +390,7 @@ export default function JobSeekerRegisterPage() {
                       value={formData.fieldOfStudy}
                       onChange={handleInputChange}
                       placeholder="e.g., Computer Science, Engineering"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base"
+                      className="w-full rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                     />
                   </div>
                 </div>
@@ -383,7 +404,7 @@ export default function JobSeekerRegisterPage() {
                   <label className="block text-sm font-semibold text-gray-800 mb-4">
                     Target Industries * (Select all that apply)
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {INDUSTRIES.map((industry) => (
                       <button
                         key={industry}
@@ -392,7 +413,7 @@ export default function JobSeekerRegisterPage() {
                         className={`px-4 py-3 rounded-lg border-2 transition text-sm font-medium ${
                           formData.targetIndustries.includes(industry)
                             ? "border-teal-600 bg-teal-50 text-teal-700"
-                            : "border-gray-300 text-gray-700 hover:border-gray-400"
+                            : "border-slate-300 text-slate-700 hover:border-slate-400"
                         }`}
                       >
                         {industry}
@@ -411,7 +432,7 @@ export default function JobSeekerRegisterPage() {
                     onChange={handleInputChange}
                     placeholder="Tell us about your career aspirations, target companies, and what you hope to achieve with InterviewAce"
                     rows={5}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-base resize-none"
+                    className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-base outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                   />
                   <p className="text-xs text-gray-500 mt-2">
                     {formData.careerGoals.length}/500 characters
@@ -422,7 +443,7 @@ export default function JobSeekerRegisterPage() {
                   <input
                     type="checkbox"
                     id="terms"
-                    className="mt-1 w-4 h-4 rounded accent-teal-600"
+                    className="mt-1 h-4 w-4 rounded accent-teal-600"
                   />
                   <label htmlFor="terms" className="text-xs text-gray-600 ml-3 leading-relaxed">
                     I agree to InterviewAce's{" "}
@@ -439,12 +460,12 @@ export default function JobSeekerRegisterPage() {
             )}
 
             {/* Buttons */}
-            <div className="flex gap-4 pt-8">
+            <div className="flex flex-col gap-3 pt-8 sm:flex-row sm:gap-4">
               {currentStep > 1 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-semibold"
+                  className="flex-1 rounded-xl border-2 border-slate-300 px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Back
                 </button>
@@ -454,7 +475,7 @@ export default function JobSeekerRegisterPage() {
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold"
+                  className="flex-1 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700"
                 >
                   Continue
                 </button>
@@ -463,7 +484,7 @@ export default function JobSeekerRegisterPage() {
                   type="button"
                   onClick={handleRegister}
                   disabled={loading}
-                  className="flex-1 px-4 py-3 bg-orange-400 hover:bg-orange-500 text-white rounded-lg transition font-semibold disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-orange-400 px-4 py-3 font-semibold text-white transition hover:bg-orange-500 disabled:opacity-50"
                 >
                   {loading ? "Creating account..." : "Create Account"}
                 </button>
@@ -480,6 +501,7 @@ export default function JobSeekerRegisterPage() {
               </Link>
             </p>
           </div>
+        </div>
         </div>
       </div>
     </div>

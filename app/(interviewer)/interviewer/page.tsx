@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useAuth } from "@/lib/context/AuthContext";
 import Link from "next/link";
 import {
   DollarSign,
@@ -87,7 +87,8 @@ const recentSessions = [
 ];
 
 export default function InterviewerDashboardPage() {
-  const [userName] = useState("Kasun");
+  const { user } = useAuth();
+  const userName = user?.firstName || "";
 
   return (
     <div className="w-full">

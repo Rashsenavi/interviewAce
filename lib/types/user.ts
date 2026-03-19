@@ -114,6 +114,8 @@ export interface CreateInterviewerRequest {
   industryExpertise: string[];
   hourlyRate: number;
   bio?: string;
+  nicUrl?: string;
+  appointmentLetterUrl?: string;
 }
 
 export interface UpdateProfileRequest {
