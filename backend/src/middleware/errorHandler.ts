@@ -18,13 +18,32 @@ export const errorHandler = (
   const message = error.message || "Internal Server Error";
   const code = error.code || "INTERNAL_ERROR";
 
+  const redactKeys = new Set([
+    "password",
+    "token",
+    "resetToken",
+    "currentPassword",
+    "newPassword",
+    "confirmPassword",
+  ]);
+
+  const sanitizedBody =
+    req.body && typeof req.body === "object"
+      ? Object.fromEntries(
+          Object.entries(req.body).map(([key, value]) => [
+            key,
+            redactKeys.has(key) ? "[REDACTED]" : value,
+          ])
+        )
+      : req.body;
+
   console.error(`[${new Date().toISOString()}] Error:`, {
     status,
     code,
     message,
     path: req.path,
     method: req.method,
-    body: req.body,
+    body: sanitizedBody,
   });
 
   res.status(status).json({
@@ -36,7 +55,6 @@ export const errorHandler = (
     },
   });
 };
-
 /**
  * Async error wrapper for route handlers
  */

@@ -113,14 +113,17 @@ export const authService = {
    * Request password reset
    */
   async forgotPassword(email: string): Promise<{ success: boolean; message?: string }> {
-    const response = await apiClient.post<{ message: string }>("/auth/forgot-password", { email });
-    
-    if (response.success && response.data) {
-      return { success: true, message: response.data.message };
-    }
-    
-    return { success: false, message: response.error?.message };
-  },
+  const response = await apiClient.post<{ message: string }>("/auth/forgot-password", { email });
+
+  if (response.success && response.data) {
+    return {
+      success: true,
+      message: response.data.message,
+    };
+  }
+
+  return { success: false, message: response.error?.message };
+},
 
   /**
    * Reset password

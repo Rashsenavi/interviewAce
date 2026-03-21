@@ -38,6 +38,23 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const verifyEmailSchema = z.object({
+  token: z.string().min(1, "Verification token is required"),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Reset token is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+const requestEmailVerificationSchema = z.object({
+  email: z.string().email("Invalid email address"),
+});
+
 /**
  * POST /api/auth/register/job-seeker
  * Register a new job seeker
@@ -167,15 +184,81 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 };
 
 /**
+ * POST /api/auth/request-verification
+ * Request an email verification token
+ */
+export const requestEmailVerification = async (req: Request, res: Response) => {
+  try {
+    const { email } = requestEmailVerificationSchema.parse(req.body);
+    const token = await authService.createEmailVerificationToken(email);
+
+    const data: { message: string; token?: string } = {
+      message: "Verification token created",
+    };
+
+    // Return token in non-production for local development/testing.
+    if (process.env.NODE_ENV !== "production") {
+      data.token = token;
+    }
+
+    res.json({
+      success: true,
+      data,
+      message: "Verification token created",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid input data",
+          details: error.errors,
+        },
+      });
+    }
+
+    // Avoid exposing account existence/verification state.
+    return res.json({
+      success: true,
+      data: {
+        message: "If your email exists, a verification link has been sent",
+      },
+      message: "If your email exists, a verification link has been sent",
+    });
+  }
+};
+
+/**
  * POST /api/auth/verify-email
  * Verify email with token
  */
 export const verifyEmail = async (req: Request, res: Response) => {
-  // TODO: Implement email verification
-  res.json({
-    success: true,
-    message: "Email verification endpoint - not yet implemented",
-  });
+  try {
+    const { token } = verifyEmailSchema.parse(req.body);
+    const result = await authService.verifyEmail(token);
+
+    res.json({
+      success: true,
+      data: {
+        message: "Email verified successfully",
+        userId: result.userId,
+      },
+      message: "Email verified successfully",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid input data",
+          details: error.errors,
+        },
+      });
+    }
+    throw error;
+  }
 };
 
 /**
@@ -183,11 +266,30 @@ export const verifyEmail = async (req: Request, res: Response) => {
  * Request password reset
  */
 export const forgotPassword = async (req: Request, res: Response) => {
-  // TODO: Implement forgot password
-  res.json({
-    success: true,
-    message: "Password reset email sent (not yet implemented)",
-  });
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    await authService.forgotPassword(email);
+
+    const message = "If your email exists, a password reset link has been sent";
+
+    res.json({
+      success: true,
+      data: { message },
+      message,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid input data",
+          details: error.errors,
+        },
+      });
+    }
+    throw error;
+  }
 };
 
 /**
@@ -195,11 +297,30 @@ export const forgotPassword = async (req: Request, res: Response) => {
  * Reset password with token
  */
 export const resetPassword = async (req: Request, res: Response) => {
-  // TODO: Implement reset password
-  res.json({
-    success: true,
-    message: "Password reset endpoint - not yet implemented",
-  });
+  try {
+    const { token, password } = resetPasswordSchema.parse(req.body);
+    await authService.resetPassword(token, password);
+
+    res.json({
+      success: true,
+      data: {
+        message: "Password reset successfully",
+      },
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid input data",
+          details: error.errors,
+        },
+      });
+    }
+    throw error;
+  }
 };
 
 export default {
@@ -207,6 +328,7 @@ export default {
   registerInterviewer,
   login,
   getCurrentUser,
+  requestEmailVerification,
   verifyEmail,
   forgotPassword,
   resetPassword,

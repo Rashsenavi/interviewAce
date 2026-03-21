@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
 import { db } from "../config/database";
 import { users, jobSeekers, interviewers } from "../db/schema";
 import { generateToken } from "../config/jwt";
+import { sendPasswordResetEmail } from "./email.service";
 
 // Types
 export interface RegisterJobSeekerInput {
@@ -51,6 +53,39 @@ export interface AuthResult {
   };
   token: string;
 }
+
+interface ActionTokenPayload {
+  userId: number;
+  email: string;
+  purpose: "email_verification" | "password_reset";
+}
+
+const ACTION_TOKEN_SECRET =
+  process.env.JWT_SECRET || "your_jwt_secret_key_here_min_32_characters";
+const EMAIL_VERIFY_EXPIRES_IN = process.env.EMAIL_VERIFY_EXPIRES_IN || "24h";
+const PASSWORD_RESET_EXPIRES_IN = process.env.PASSWORD_RESET_EXPIRES_IN || "30m";
+
+const createActionToken = (
+  payload: ActionTokenPayload,
+  expiresIn: string
+): string => {
+  return jwt.sign(payload, ACTION_TOKEN_SECRET, {
+    expiresIn: expiresIn as jwt.SignOptions["expiresIn"],
+  });
+};
+
+const verifyActionToken = (token: string): ActionTokenPayload => {
+  return jwt.verify(token, ACTION_TOKEN_SECRET) as ActionTokenPayload;
+};
+
+const getSafeError = (message: string, status: number, code: string) => {
+  const error = new Error(message) as Error & { status?: number; code?: string };
+  error.status = status;
+  error.code = code;
+  return error;
+};
+const FRONTEND_BASE_URL =
+  process.env.FRONTEND_BASE_URL || process.env.FRONTEND_URL || "http://localhost:3000";
 
 /**
  * Register a new job seeker
@@ -263,9 +298,183 @@ export const getUserById = async (id: number) => {
   return user;
 };
 
+/**
+ * Create email verification token for a user
+ */
+export const createEmailVerificationToken = async (email: string) => {
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      isVerified: users.isVerified,
+      isActive: users.isActive,
+    })
+    .from(users)
+    .where(eq(users.email, email.toLowerCase()))
+    .limit(1);
+
+  if (!user) {
+    throw getSafeError("User not found", 404, "USER_NOT_FOUND");
+  }
+
+  if (!user.isActive) {
+    throw getSafeError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED");
+  }
+
+  if (user.isVerified) {
+    throw getSafeError("Email is already verified", 400, "ALREADY_VERIFIED");
+  }
+
+  return createActionToken(
+    {
+      userId: user.id,
+      email: user.email,
+      purpose: "email_verification",
+    },
+    EMAIL_VERIFY_EXPIRES_IN
+  );
+};
+
+/**
+ * Verify user email using token
+ */
+export const verifyEmail = async (token: string) => {
+  let payload: ActionTokenPayload;
+
+  try {
+    payload = verifyActionToken(token);
+  } catch (error) {
+    throw getSafeError("Invalid or expired verification token", 400, "INVALID_TOKEN");
+  }
+
+  if (payload.purpose !== "email_verification") {
+    throw getSafeError("Invalid verification token", 400, "INVALID_TOKEN_PURPOSE");
+  }
+
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      isVerified: users.isVerified,
+      isActive: users.isActive,
+    })
+    .from(users)
+    .where(eq(users.id, payload.userId))
+    .limit(1);
+
+  if (!user || user.email !== payload.email) {
+    throw getSafeError("User not found for this token", 404, "USER_NOT_FOUND");
+  }
+
+  if (!user.isActive) {
+    throw getSafeError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED");
+  }
+
+  if (!user.isVerified) {
+    await db
+      .update(users)
+      .set({
+        isVerified: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+  }
+
+  return { userId: user.id, email: user.email };
+};
+
+export const forgotPassword = async (email: string) => {
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      firstName: users.firstName,
+      isActive: users.isActive,
+    })
+    .from(users)
+    .where(eq(users.email, email.toLowerCase()))
+    .limit(1);
+
+  // Keep generic behavior to avoid account enumeration.
+  if (!user || !user.isActive) {
+    return { resetToken: null as string | null };
+  }
+
+  const resetToken = createActionToken(
+    {
+      userId: user.id,
+      email: user.email,
+      purpose: "password_reset",
+    },
+    PASSWORD_RESET_EXPIRES_IN
+  );
+
+  const resetUrl = `${FRONTEND_BASE_URL}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  await sendPasswordResetEmail({
+    to: user.email,
+    firstName: user.firstName,
+    resetUrl,
+  });
+
+  // Temporary: keep return shape until controller/frontend cleanup step.
+  return { resetToken: null as string | null };
+};
+
+/**
+ * Reset password using reset token
+ */
+export const resetPassword = async (token: string, newPassword: string) => {
+  let payload: ActionTokenPayload;
+
+  try {
+    payload = verifyActionToken(token);
+  } catch (error) {
+    throw getSafeError("Invalid or expired reset token", 400, "INVALID_TOKEN");
+  }
+
+  if (payload.purpose !== "password_reset") {
+    throw getSafeError("Invalid reset token", 400, "INVALID_TOKEN_PURPOSE");
+  }
+
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      isActive: users.isActive,
+    })
+    .from(users)
+    .where(eq(users.id, payload.userId))
+    .limit(1);
+
+  if (!user || user.email !== payload.email) {
+    throw getSafeError("User not found for this token", 404, "USER_NOT_FOUND");
+  }
+
+  if (!user.isActive) {
+    throw getSafeError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await db
+    .update(users)
+    .set({
+      passwordHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, user.id));
+
+  return { userId: user.id, email: user.email };
+};
+
 export default {
   registerJobSeeker,
   registerInterviewer,
   login,
   getUserById,
+  createEmailVerificationToken,
+  verifyEmail,
+  forgotPassword,
+  resetPassword,
 };
