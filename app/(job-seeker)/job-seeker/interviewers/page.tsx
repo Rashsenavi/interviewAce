@@ -289,7 +289,7 @@ export default function BrowseInterviewersPage() {
             {/* Header */}
             <div className="flex items-start gap-4 mb-4">
               <div
-                className={`w-14 h-14 ${interviewer.avatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0`}
+                className={`w-14 h-14 ${interviewer.avatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0`}
               >
                 {interviewer.avatar}
               </div>
@@ -299,7 +299,7 @@ export default function BrowseInterviewersPage() {
                     {interviewer.name}
                   </h3>
                   {interviewer.verified && (
-                    <CheckCircle className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-blue-500 shrink-0" />
                   )}
                 </div>
                 <p className="text-sm text-gray-600 truncate">{interviewer.title}</p>

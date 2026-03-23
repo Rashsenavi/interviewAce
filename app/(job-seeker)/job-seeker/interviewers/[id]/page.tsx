@@ -155,7 +155,7 @@ export default function InterviewerProfilePage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start gap-6">
               <div
-                className={`w-24 h-24 ${interviewer.avatarBg} rounded-full flex items-center justify-center text-white font-bold text-3xl flex-shrink-0`}
+                className={`w-24 h-24 ${interviewer.avatarBg} rounded-full flex items-center justify-center text-white font-bold text-3xl shrink-0`}
               >
                 {interviewer.avatar}
               </div>

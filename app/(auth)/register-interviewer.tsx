@@ -205,7 +205,7 @@ export default function InterviewerRegisterPage() {
   const stepLabels = ["Account", "Experience", "Expertise", "Review"];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-violet-50 to-indigo-100 px-4 py-8 md:px-6 md:py-10">
+    <div className="min-h-screen bg-linear-to-br from-slate-100 via-violet-50 to-indigo-100 px-4 py-8 md:px-6 md:py-10">
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6">
           <Link

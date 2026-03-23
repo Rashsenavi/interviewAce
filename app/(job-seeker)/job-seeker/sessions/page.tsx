@@ -351,7 +351,7 @@ export default function MySessionsPage() {
                 <div className="flex items-start gap-4">
                   {/* Interviewer Avatar */}
                   <div
-                    className={`w-14 h-14 ${session.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0`}
+                    className={`w-14 h-14 ${session.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0`}
                   >
                     {session.interviewerAvatar}
                   </div>
@@ -487,7 +487,7 @@ export default function MySessionsPage() {
       </div>
 
       {/* Book More CTA */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
+      <div className="bg-linear-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-xl font-semibold mb-1">Ready for your next practice session?</h3>

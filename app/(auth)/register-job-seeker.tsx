@@ -153,7 +153,7 @@ export default function JobSeekerRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-cyan-50 px-4 py-8 md:px-6 md:py-10">
+    <div className="min-h-screen bg-linear-to-br from-slate-100 via-blue-50 to-cyan-50 px-4 py-8 md:px-6 md:py-10">
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6">
           <Link

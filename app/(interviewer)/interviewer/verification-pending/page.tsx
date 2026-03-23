@@ -28,7 +28,7 @@ export default function VerificationPendingPage() {
             <h3 className="font-semibold text-gray-800 mb-4">What happens next?</h3>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                <div className="shrink-0 w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
                   <CheckCircle size={14} />
                 </div>
                 <div>
@@ -37,7 +37,7 @@ export default function VerificationPendingPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center">
+                <div className="shrink-0 w-6 h-6 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center">
                   <Clock size={14} />
                 </div>
                 <div>
@@ -46,7 +46,7 @@ export default function VerificationPendingPage() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-6 h-6 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center">
+                <div className="shrink-0 w-6 h-6 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center">
                   <Mail size={14} />
                 </div>
                 <div>

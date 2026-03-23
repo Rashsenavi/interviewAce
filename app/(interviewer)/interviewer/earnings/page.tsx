@@ -157,7 +157,7 @@ export default function InterviewerEarningsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl p-5 text-white">
+        <div className="bg-linear-to-br from-teal-500 to-teal-600 rounded-xl p-5 text-white">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
               <Wallet className="w-6 h-6" />
@@ -211,7 +211,7 @@ export default function InterviewerEarningsPage() {
       </div>
 
       {/* Bank Account Card */}
-      <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-xl p-6 mb-6 text-white">
+      <div className="bg-linear-to-r from-gray-800 to-gray-900 rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center">
@@ -285,12 +285,12 @@ export default function InterviewerEarningsPage() {
                   {/* Icon/Avatar */}
                   {transaction.type === "earning" ? (
                     <div
-                      className={`w-12 h-12 ${transaction.candidateAvatarBg} rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}
+                      className={`w-12 h-12 ${transaction.candidateAvatarBg} rounded-full flex items-center justify-center text-white font-semibold shrink-0`}
                     >
                       {transaction.candidateAvatar}
                     </div>
                   ) : (
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
                       <ArrowUpRight className="w-6 h-6 text-blue-600" />
                     </div>
                   )}

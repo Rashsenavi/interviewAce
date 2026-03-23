@@ -47,7 +47,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 px-4 py-8 md:px-6 md:py-12">
+    <div className="min-h-screen bg-linear-to-br from-slate-100 via-blue-50 to-indigo-100 px-4 py-8 md:px-6 md:py-12">
       <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_60px_-42px_rgba(15,23,42,0.45)] lg:grid-cols-2">
         <section className="hidden bg-slate-900 p-10 text-white lg:flex lg:flex-col lg:justify-between">
           <div>

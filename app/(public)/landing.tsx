@@ -356,7 +356,7 @@ export default function InterviewAceLanding() {
                 <ul className="mt-6 space-y-3 text-sm text-slate-700">
                   {plan.points.map((point) => (
                     <li key={point} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-600" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                       <span>{point}</span>
                     </li>
                   ))}

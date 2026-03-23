@@ -97,7 +97,7 @@ export default function JobSeekerDashboardPage() {
         </p>
 
         {/* Profile Progress Bar */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl p-5 flex items-center justify-between" style={{ marginBottom: '40px' }}>
+        <div className="bg-linear-to-r from-blue-600 to-blue-500 rounded-xl p-5 flex items-center justify-between" style={{ marginBottom: '40px' }}>
           <div className="flex-1 mr-6">
             <p className="text-blue-100 text-xs mb-0.5">Profile Completion</p>
             <p className="text-white text-2xl font-bold mb-2">{profileCompletion}%</p>
@@ -108,7 +108,7 @@ export default function JobSeekerDashboardPage() {
               ></div>
             </div>
           </div>
-          <button className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors flex-shrink-0">
+          <button className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors shrink-0">
             Complete Profile
           </button>
         </div>
@@ -117,7 +117,7 @@ export default function JobSeekerDashboardPage() {
         <div className="grid grid-cols-2 gap-4" style={{ marginBottom: '40px' }}>
           <Link
             href="/job-seeker/interviewers"
-            className="flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-400 text-white py-3 rounded-xl font-medium hover:from-orange-600 hover:to-orange-500 transition-all text-sm"
+            className="flex items-center justify-center gap-2 bg-linear-to-r from-orange-500 to-orange-400 text-white py-3 rounded-xl font-medium hover:from-orange-600 hover:to-orange-500 transition-all text-sm"
           >
             <Calendar className="w-4 h-4" />
             Book Interview
@@ -178,7 +178,7 @@ export default function JobSeekerDashboardPage() {
             >
               <div className="flex items-center gap-3">
                 {/* Avatar */}
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-gray-300 to-gray-400 flex-shrink-0 flex items-center justify-center text-gray-600 font-semibold">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-linear-to-br from-gray-300 to-gray-400 shrink-0 flex items-center justify-center text-gray-600 font-semibold">
                   {session.interviewer.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div>
@@ -302,7 +302,7 @@ export default function JobSeekerDashboardPage() {
               className="border border-gray-200 rounded-xl p-5 text-center"
             >
               {/* Avatar */}
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-gray-300 to-gray-400 mx-auto mb-3 flex items-center justify-center text-gray-600 font-semibold text-xl">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-linear-to-br from-gray-300 to-gray-400 mx-auto mb-3 flex items-center justify-center text-gray-600 font-semibold text-xl">
                 {interviewer.name.split(' ').map(n => n[0]).join('')}
               </div>
               <h3 className="font-semibold text-gray-900">{interviewer.name}</h3>
@@ -324,7 +324,7 @@ export default function JobSeekerDashboardPage() {
                 {interviewer.price}
               </p>
 
-              <button className="w-full mt-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-medium hover:from-blue-700 hover:to-blue-600 transition-all">
+              <button className="w-full mt-4 py-2.5 bg-linear-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-medium hover:from-blue-700 hover:to-blue-600 transition-all">
                 Book Now
               </button>
             </div>

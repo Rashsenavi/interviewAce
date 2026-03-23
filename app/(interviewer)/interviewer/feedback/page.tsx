@@ -295,7 +295,7 @@ export default function InterviewerFeedbackPage() {
                 >
                   <div className="flex items-start gap-4">
                     <div
-                      className={`w-12 h-12 ${feedback.candidateAvatarBg} rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}
+                      className={`w-12 h-12 ${feedback.candidateAvatarBg} rounded-full flex items-center justify-center text-white font-semibold shrink-0`}
                     >
                       {feedback.candidateAvatar}
                     </div>
@@ -435,7 +435,7 @@ export default function InterviewerFeedbackPage() {
           </div>
 
           {/* Tips */}
-          <div className="bg-gradient-to-br from-teal-50 to-blue-50 rounded-xl p-6 border border-teal-100">
+          <div className="bg-linear-to-br from-teal-50 to-blue-50 rounded-xl p-6 border border-teal-100">
             <h3 className="font-semibold text-gray-900 mb-3">💡 Tips to Improve</h3>
             <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-start gap-2">

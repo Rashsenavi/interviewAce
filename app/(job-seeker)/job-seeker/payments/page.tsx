@@ -233,7 +233,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Payment Methods Card */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 mb-6 text-white">
+      <div className="bg-linear-to-r from-blue-600 to-blue-700 rounded-xl p-6 mb-6 text-white">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold mb-1">Default Payment Method</h3>
@@ -308,7 +308,7 @@ export default function PaymentsPage() {
                 <div className="flex items-center gap-4">
                   {/* Interviewer Avatar */}
                   <div
-                    className={`w-12 h-12 ${payment.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0`}
+                    className={`w-12 h-12 ${payment.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold shrink-0`}
                   >
                     {payment.interviewerAvatar}
                   </div>

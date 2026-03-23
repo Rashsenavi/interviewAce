@@ -58,7 +58,7 @@ function BookingConfirmationContent() {
 
       {/* Booking Details Card */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
+        <div className="bg-linear-to-r from-blue-600 to-blue-700 p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm mb-1">Booking Reference</p>
@@ -140,7 +140,7 @@ function BookingConfirmationContent() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">What's Next?</h2>
         <div className="space-y-4">
           <div className="flex items-start gap-4">
-            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center shrink-0">
               <span className="text-green-600 font-semibold text-sm">1</span>
             </div>
             <div>
@@ -151,7 +151,7 @@ function BookingConfirmationContent() {
             </div>
           </div>
           <div className="flex items-start gap-4">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
               <span className="text-blue-600 font-semibold text-sm">2</span>
             </div>
             <div>
@@ -162,7 +162,7 @@ function BookingConfirmationContent() {
             </div>
           </div>
           <div className="flex items-start gap-4">
-            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
               <span className="text-purple-600 font-semibold text-sm">3</span>
             </div>
             <div>

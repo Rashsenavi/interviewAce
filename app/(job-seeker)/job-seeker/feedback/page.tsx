@@ -245,7 +245,7 @@ export default function FeedbackPage() {
                 <div key={feedback.id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-4">
                     <div
-                      className={`w-14 h-14 ${feedback.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0`}
+                      className={`w-14 h-14 ${feedback.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0`}
                     >
                       {feedback.interviewerAvatar}
                     </div>
@@ -300,7 +300,7 @@ export default function FeedbackPage() {
                 <div key={feedback.id} className="p-6">
                   <div className="flex items-start gap-4">
                     <div
-                      className={`w-14 h-14 ${feedback.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0`}
+                      className={`w-14 h-14 ${feedback.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0`}
                     >
                       {feedback.interviewerAvatar}
                     </div>

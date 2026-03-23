@@ -107,7 +107,7 @@ export default function InterviewerDashboardPage() {
               <p className="text-2xl font-bold text-gray-900 truncate">LKR 85,000</p>
               <p className="text-xs text-gray-400 mt-2">from last month</p>
             </div>
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
               <DollarSign size={22} className="text-green-600" />
             </div>
           </div>
@@ -121,7 +121,7 @@ export default function InterviewerDashboardPage() {
               <p className="text-3xl font-bold text-gray-900">8</p>
               <p className="text-xs text-teal-600 mt-2">Next: Today 2:00 PM</p>
             </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
               <Calendar size={22} className="text-blue-600" />
             </div>
           </div>
@@ -135,7 +135,7 @@ export default function InterviewerDashboardPage() {
               <p className="text-3xl font-bold text-gray-900">4.8</p>
               <p className="text-xs text-gray-400 mt-2">42 reviews</p>
             </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center shrink-0">
               <Star size={22} className="text-yellow-500" />
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function InterviewerDashboardPage() {
               <p className="text-3xl font-bold text-gray-900">47</p>
               <p className="text-xs text-gray-400 mt-2">96% completion</p>
             </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
               <Users size={22} className="text-purple-600" />
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function InterviewerDashboardPage() {
                   <div className="flex items-start gap-4">
                     {/* Avatar */}
                     <div
-                      className={`w-12 h-12 ${session.avatarBg} rounded-full flex items-center justify-center flex-shrink-0`}
+                      className={`w-12 h-12 ${session.avatarBg} rounded-full flex items-center justify-center shrink-0`}
                     >
                       <span className={`font-semibold ${session.avatarColor}`}>
                         {session.avatar}

@@ -373,7 +373,7 @@ export default function InterviewerSessionsPage() {
                 <div className="flex items-start gap-4">
                   {/* Candidate Avatar */}
                   <div
-                    className={`w-14 h-14 ${session.candidateAvatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg flex-shrink-0`}
+                    className={`w-14 h-14 ${session.candidateAvatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0`}
                   >
                     {session.candidateAvatar}
                   </div>

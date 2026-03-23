@@ -54,7 +54,7 @@ export default function VideosPage() {
             className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
           >
             {/* Thumbnail */}
-            <div className="relative h-40 bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+            <div className="relative h-40 bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center">
               <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
                 <Play className="w-6 h-6 text-white fill-white" />
               </div>
