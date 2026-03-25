@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth";
+import { asyncHandler } from "../middleware/errorHandler";
 import {
   getPendingVerifications,
   getVerificationDetails,
@@ -13,25 +14,25 @@ const router = Router();
  * GET /api/admin/verification/pending
  * Get pending interviewer verifications
  */
-router.get("/verification/pending", authenticate, authorize("admin"), getPendingVerifications);
+router.get("/verification/pending", authenticate, authorize("admin"), asyncHandler(getPendingVerifications));
 
 /**
  * GET /api/admin/verification/:interviewerId
  * Get verification details for interviewer
  */
-router.get("/verification/:interviewerId", authenticate, authorize("admin"), getVerificationDetails);
+router.get("/verification/:interviewerId", authenticate, authorize("admin"), asyncHandler(getVerificationDetails));
 
 /**
  * PUT /api/admin/verification/:interviewerId/approve
  * Approve interviewer verification
  */
-router.put("/verification/:interviewerId/approve", authenticate, authorize("admin"), approveVerification);
+router.put("/verification/:interviewerId/approve", authenticate, authorize("admin"), asyncHandler(approveVerification));
 
 /**
  * PUT /api/admin/verification/:interviewerId/reject
  * Reject interviewer verification
  */
-router.put("/verification/:interviewerId/reject", authenticate, authorize("admin"), rejectVerification);
+router.put("/verification/:interviewerId/reject", authenticate, authorize("admin"), asyncHandler(rejectVerification));
 
 /**
  * GET /api/admin/analytics
