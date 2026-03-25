@@ -20,9 +20,26 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    if (!body?.email || !body?.passwordHash || !body?.firstName || !body?.lastName) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing required fields: email, passwordHash, firstName, and lastName are required",
+        },
+        { status: 400 }
+      );
+    }
+
+    const allowedUserTypes = new Set(["job_seeker", "interviewer", "admin"]);
+    const userType = allowedUserTypes.has(body.userType) ? body.userType : "job_seeker";
+
     const newUser = await db.insert(users).values({
-      name: body.name,
       email: body.email,
+      passwordHash: body.passwordHash,
+      firstName: body.firstName,
+      lastName: body.lastName,
+      phoneNumber: body.phoneNumber,
+      userType,
     }).returning();
 
     return NextResponse.json(newUser[0], { status: 201 });
