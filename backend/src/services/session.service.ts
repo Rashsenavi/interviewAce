@@ -41,7 +41,11 @@ export const createSession = async (input: CreateSessionInput) => {
 
   // Get interviewer id
   const [interviewer] = await db
-    .select({ id: interviewers.id })
+    .select({
+      id: interviewers.id,
+      isVerified: interviewers.isVerified,
+      verificationStatus: interviewers.verificationStatus,
+    })
     .from(interviewers)
     .where(eq(interviewers.userId, input.interviewerUserId))
     .limit(1);
@@ -50,6 +54,16 @@ export const createSession = async (input: CreateSessionInput) => {
     const error = new Error("Interviewer not found") as Error & { status?: number; code?: string };
     error.status = 404;
     error.code = "INTERVIEWER_NOT_FOUND";
+    throw error;
+  }
+
+  if (!interviewer.isVerified || interviewer.verificationStatus !== "approved") {
+    const error = new Error("Interviewer is not yet verified") as Error & {
+      status?: number;
+      code?: string;
+    };
+    error.status = 400;
+    error.code = "INTERVIEWER_NOT_VERIFIED";
     throw error;
   }
 

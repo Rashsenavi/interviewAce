@@ -30,6 +30,17 @@ const updateInterviewerSchema = z.object({
   bankAccountNumber: z.string().optional(),
 });
 
+const availabilitySlotSchema = z.object({
+  dayOfWeek: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
+  startTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+  endTime: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+  isAvailable: z.boolean().optional(),
+});
+
+const replaceAvailabilitySchema = z.object({
+  slots: z.array(availabilitySlotSchema),
+});
+
 /**
  * GET /api/jobseekers
  * Get all job seekers (admin only)
@@ -227,6 +238,64 @@ export const getInterviewerById = async (req: Request, res: Response) => {
   });
 };
 
+/**
+ * GET /api/interviewers/:id/availability
+ * Get interviewer availability by interviewer user id
+ */
+export const getInterviewerAvailability = async (req: Request, res: Response) => {
+  const interviewerUserId = parseInt(req.params.id, 10);
+
+  if (Number.isNaN(interviewerUserId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: "INVALID_ID", message: "Invalid interviewer ID" },
+    });
+  }
+
+  const slots = await userService.getInterviewerAvailabilityByUserId(interviewerUserId);
+
+  res.json({
+    success: true,
+    data: { slots },
+  });
+};
+
+/**
+ * PUT /api/interviewers/availability
+ * Replace current interviewer's recurring availability
+ */
+export const replaceInterviewerAvailability = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: { code: "NOT_AUTHENTICATED", message: "User not authenticated" },
+    });
+  }
+
+  try {
+    const validated = replaceAvailabilitySchema.parse(req.body);
+    const slots = await userService.replaceInterviewerAvailabilityByUserId(req.user.id, validated.slots);
+
+    res.json({
+      success: true,
+      data: { slots },
+      message: "Availability updated successfully",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid availability payload",
+          details: error.errors,
+        },
+      });
+    }
+    throw error;
+  }
+};
+
 export default {
   getAllJobSeekers,
   getJobSeekerProfile,
@@ -235,4 +304,6 @@ export default {
   getInterviewerProfile,
   updateInterviewerProfile,
   getInterviewerById,
+  getInterviewerAvailability,
+  replaceInterviewerAvailability,
 };
