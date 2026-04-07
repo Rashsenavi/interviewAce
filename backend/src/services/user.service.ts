@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "../config/database";
-import { users, jobSeekers, interviewers, availabilitySlots } from "../db/schema";
+import { users, jobSeekers, interviewers } from "../db/schema";
 
 /**
  * Get all job seekers
@@ -254,75 +254,6 @@ export const updateInterviewer = async (
   return getInterviewerByUserId(userId);
 };
 
-/**
- * Get interviewer availability by user ID
- */
-export const getInterviewerAvailabilityByUserId = async (userId: number) => {
-  const [interviewer] = await db
-    .select({ id: interviewers.id })
-    .from(interviewers)
-    .where(eq(interviewers.userId, userId))
-    .limit(1);
-
-  if (!interviewer) return [];
-
-  return db
-    .select({
-      id: availabilitySlots.id,
-      dayOfWeek: availabilitySlots.dayOfWeek,
-      startTime: availabilitySlots.startTime,
-      endTime: availabilitySlots.endTime,
-      isAvailable: availabilitySlots.isAvailable,
-      specificDate: availabilitySlots.specificDate,
-      isRecurring: availabilitySlots.isRecurring,
-    })
-    .from(availabilitySlots)
-    .where(eq(availabilitySlots.interviewerId, interviewer.id));
-};
-
-/**
- * Replace interviewer recurring availability by user ID
- */
-export const replaceInterviewerAvailabilityByUserId = async (
-  userId: number,
-  slots: Array<{
-    dayOfWeek: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
-    startTime: string;
-    endTime: string;
-    isAvailable?: boolean;
-  }>
-) => {
-  const [interviewer] = await db
-    .select({ id: interviewers.id })
-    .from(interviewers)
-    .where(eq(interviewers.userId, userId))
-    .limit(1);
-
-  if (!interviewer) {
-    const error = new Error("Interviewer not found") as Error & { status?: number; code?: string };
-    error.status = 404;
-    error.code = "INTERVIEWER_NOT_FOUND";
-    throw error;
-  }
-
-  await db.delete(availabilitySlots).where(eq(availabilitySlots.interviewerId, interviewer.id));
-
-  if (slots.length > 0) {
-    await db.insert(availabilitySlots).values(
-      slots.map((slot) => ({
-        interviewerId: interviewer.id,
-        dayOfWeek: slot.dayOfWeek,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        isRecurring: true,
-        isAvailable: slot.isAvailable ?? true,
-      }))
-    );
-  }
-
-  return getInterviewerAvailabilityByUserId(userId);
-};
-
 export default {
   getAllJobSeekers,
   getJobSeekerByUserId,
@@ -330,6 +261,4 @@ export default {
   getAllInterviewers,
   getInterviewerByUserId,
   updateInterviewer,
-  getInterviewerAvailabilityByUserId,
-  replaceInterviewerAvailabilityByUserId,
 };

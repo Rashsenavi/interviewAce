@@ -1,111 +1,187 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { interviewerApi } from "@/lib/api";
 import {
   Search,
   Star,
+  MapPin,
   Briefcase,
   Clock,
+  Filter,
   ChevronDown,
   CheckCircle,
 } from "lucide-react";
 
-type ApiInterviewer = {
-  id: number;
-  userId: number;
-  firstName: string;
-  lastName: string;
-  currentCompany: string | null;
-  jobTitle: string | null;
-  yearsExperience: number | null;
-  industryExpertise: string[];
-  hourlyRate: number;
-  bio: string | null;
-  isVerified: boolean;
-  ratingAverage: number;
-  totalInterviews: number;
-};
-
-const avatarColors = [
-  "bg-blue-500",
-  "bg-emerald-500",
-  "bg-rose-500",
-  "bg-amber-500",
-  "bg-indigo-500",
-  "bg-cyan-500",
+// Mock data for interviewers
+const interviewersData = [
+  {
+    id: 1,
+    name: "Kasun Perera",
+    title: "Senior Software Engineer",
+    company: "Google",
+    avatar: "KP",
+    avatarBg: "bg-blue-500",
+    rating: 4.9,
+    reviews: 127,
+    hourlyRate: 5000,
+    expertise: ["Software Engineering", "System Design", "Data Structures"],
+    industries: ["IT & Software", "Tech Startups"],
+    experience: 8,
+    languages: ["English", "Sinhala"],
+    totalSessions: 245,
+    responseTime: "< 2 hours",
+    verified: true,
+    bio: "8+ years at Google, specializing in distributed systems and technical interviews.",
+    availableSlots: 12,
+  },
+  {
+    id: 2,
+    name: "Amaya Fernando",
+    title: "Product Manager",
+    company: "Meta",
+    avatar: "AF",
+    avatarBg: "bg-purple-500",
+    rating: 4.8,
+    reviews: 89,
+    hourlyRate: 6000,
+    expertise: ["Product Management", "Strategy", "User Research"],
+    industries: ["Tech", "E-commerce"],
+    experience: 6,
+    languages: ["English"],
+    totalSessions: 156,
+    responseTime: "< 1 hour",
+    verified: true,
+    bio: "Former PM at Meta, helping candidates crack product interviews.",
+    availableSlots: 8,
+  },
+  {
+    id: 3,
+    name: "Ravindu Silva",
+    title: "Investment Banking Analyst",
+    company: "Goldman Sachs",
+    avatar: "RS",
+    avatarBg: "bg-green-500",
+    rating: 4.7,
+    reviews: 64,
+    hourlyRate: 7500,
+    expertise: ["Finance", "Valuation", "Financial Modeling"],
+    industries: ["Banking & Finance", "Consulting"],
+    experience: 5,
+    languages: ["English", "Tamil"],
+    totalSessions: 98,
+    responseTime: "< 3 hours",
+    verified: true,
+    bio: "Goldman Sachs analyst with expertise in M&A and equity research.",
+    availableSlots: 5,
+  },
+  {
+    id: 4,
+    name: "Nisha Jayawardena",
+    title: "Marketing Director",
+    company: "Unilever",
+    avatar: "NJ",
+    avatarBg: "bg-orange-500",
+    rating: 4.9,
+    reviews: 112,
+    hourlyRate: 4500,
+    expertise: ["Marketing", "Brand Strategy", "Digital Marketing"],
+    industries: ["FMCG", "Retail", "E-commerce"],
+    experience: 10,
+    languages: ["English", "Sinhala"],
+    totalSessions: 203,
+    responseTime: "< 4 hours",
+    verified: true,
+    bio: "10 years at Unilever, expert in marketing and brand management interviews.",
+    availableSlots: 15,
+  },
+  {
+    id: 5,
+    name: "Tharaka Bandara",
+    title: "Data Scientist",
+    company: "Amazon",
+    avatar: "TB",
+    avatarBg: "bg-teal-500",
+    rating: 4.6,
+    reviews: 45,
+    hourlyRate: 5500,
+    expertise: ["Machine Learning", "Python", "Statistics"],
+    industries: ["Tech", "AI/ML"],
+    experience: 4,
+    languages: ["English"],
+    totalSessions: 67,
+    responseTime: "< 2 hours",
+    verified: true,
+    bio: "Amazon data scientist, specializing in ML system design interviews.",
+    availableSlots: 10,
+  },
+  {
+    id: 6,
+    name: "Sanduni Wickrama",
+    title: "HR Manager",
+    company: "Dialog Axiata",
+    avatar: "SW",
+    avatarBg: "bg-pink-500",
+    rating: 4.8,
+    reviews: 78,
+    hourlyRate: 3500,
+    expertise: ["HR", "Behavioral Interviews", "Leadership"],
+    industries: ["Telecommunications", "Corporate"],
+    experience: 7,
+    languages: ["English", "Sinhala", "Tamil"],
+    totalSessions: 189,
+    responseTime: "< 1 hour",
+    verified: true,
+    bio: "HR expert helping candidates master behavioral and competency interviews.",
+    availableSlots: 20,
+  },
 ];
 
-function getInitials(firstName?: string, lastName?: string) {
-  const first = firstName?.trim()?.[0] ?? "?";
-  const last = lastName?.trim()?.[0] ?? "";
-  return `${first}${last}`.toUpperCase();
-}
+const industries = [
+  "All Industries",
+  "IT & Software",
+  "Banking & Finance",
+  "Telecommunications",
+  "FMCG",
+  "Consulting",
+  "Healthcare",
+];
+
+const expertiseAreas = [
+  "All Expertise",
+  "Software Engineering",
+  "Product Management",
+  "Finance",
+  "Marketing",
+  "Data Science",
+  "HR & Behavioral",
+];
 
 export default function BrowseInterviewersPage() {
-  const [interviewers, setInterviewers] = useState<ApiInterviewer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndustry, setSelectedIndustry] = useState("All Industries");
   const [selectedExpertise, setSelectedExpertise] = useState("All Expertise");
   const [sortBy, setSortBy] = useState("rating");
 
-  useEffect(() => {
-    const loadInterviewers = async () => {
-      setLoading(true);
-      setError(null);
-
-      const response = await interviewerApi.getAll();
-
-      if (!response.success || !response.data?.interviewers) {
-        setError(response.error?.message || "Failed to load interviewers.");
-        setInterviewers([]);
-        setLoading(false);
-        return;
-      }
-
-      const verifiedInterviewers = response.data.interviewers.filter((item) => item.isVerified);
-      setInterviewers(verifiedInterviewers);
-      setLoading(false);
-    };
-
-    loadInterviewers();
-  }, []);
-
-  const industries = useMemo(() => {
-    const all = new Set<string>();
-    interviewers.forEach((i) => i.industryExpertise?.forEach((skill) => all.add(skill)));
-    return ["All Industries", ...Array.from(all).sort((a, b) => a.localeCompare(b))];
-  }, [interviewers]);
-
-  const expertiseAreas = useMemo(() => {
-    const all = new Set<string>();
-    interviewers.forEach((i) => i.industryExpertise?.forEach((skill) => all.add(skill)));
-    return ["All Expertise", ...Array.from(all).sort((a, b) => a.localeCompare(b))];
-  }, [interviewers]);
-
   // Filter interviewers
-  const filteredInterviewers = interviewers.filter((interviewer) => {
-    const fullName = `${interviewer.firstName} ${interviewer.lastName}`.trim();
+  const filteredInterviewers = interviewersData.filter((interviewer) => {
     const matchesSearch =
-      fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (interviewer.jobTitle || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (interviewer.currentCompany || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      interviewer.industryExpertise.some((e) =>
+      interviewer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      interviewer.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      interviewer.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      interviewer.expertise.some((e) =>
         e.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
     const matchesIndustry =
       selectedIndustry === "All Industries" ||
-      interviewer.industryExpertise.some((i) =>
+      interviewer.industries.some((i) =>
         i.toLowerCase().includes(selectedIndustry.toLowerCase())
       );
 
     const matchesExpertise =
       selectedExpertise === "All Expertise" ||
-      interviewer.industryExpertise.some((e) =>
+      interviewer.expertise.some((e) =>
         e.toLowerCase().includes(selectedExpertise.toLowerCase())
       );
 
@@ -114,10 +190,10 @@ export default function BrowseInterviewersPage() {
 
   // Sort interviewers
   const sortedInterviewers = [...filteredInterviewers].sort((a, b) => {
-    if (sortBy === "rating") return b.ratingAverage - a.ratingAverage;
+    if (sortBy === "rating") return b.rating - a.rating;
     if (sortBy === "price-low") return a.hourlyRate - b.hourlyRate;
     if (sortBy === "price-high") return b.hourlyRate - a.hourlyRate;
-    if (sortBy === "reviews") return b.totalInterviews - a.totalInterviews;
+    if (sortBy === "reviews") return b.reviews - a.reviews;
     return 0;
   });
 
@@ -198,54 +274,38 @@ export default function BrowseInterviewersPage() {
       </div>
 
       {/* Results Count */}
-      {loading ? (
-        <p className="text-sm text-gray-600 mb-4">Loading interviewers...</p>
-      ) : (
-        <p className="text-sm text-gray-600 mb-4">
-          Showing {sortedInterviewers.length} interviewers
-        </p>
-      )}
-
-      {error && (
-        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-700">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-2 text-sm font-medium text-red-700 underline"
-          >
-            Retry
-          </button>
-        </div>
-      )}
+      <p className="text-sm text-gray-600 mb-4">
+        Showing {sortedInterviewers.length} interviewers
+      </p>
 
       {/* Interviewers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {!loading && !error && sortedInterviewers.map((interviewer, index) => (
+        {sortedInterviewers.map((interviewer) => (
           <Link
-            key={interviewer.userId}
-            href={`/job-seeker/interviewers/${interviewer.userId}`}
+            key={interviewer.id}
+            href={`/job-seeker/interviewers/${interviewer.id}`}
             className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg hover:border-blue-200 transition-all group"
           >
             {/* Header */}
             <div className="flex items-start gap-4 mb-4">
               <div
-                className={`w-14 h-14 ${avatarColors[index % avatarColors.length]} rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0`}
+                className={`w-14 h-14 ${interviewer.avatarBg} rounded-full flex items-center justify-center text-white font-semibold text-lg shrink-0`}
               >
-                {getInitials(interviewer.firstName, interviewer.lastName)}
+                {interviewer.avatar}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-gray-900 truncate">
-                    {`${interviewer.firstName} ${interviewer.lastName}`}
+                    {interviewer.name}
                   </h3>
-                  {interviewer.isVerified && (
+                  {interviewer.verified && (
                     <CheckCircle className="w-4 h-4 text-blue-500 shrink-0" />
                   )}
                 </div>
-                <p className="text-sm text-gray-600 truncate">{interviewer.jobTitle || "Interviewer"}</p>
+                <p className="text-sm text-gray-600 truncate">{interviewer.title}</p>
                 <p className="text-sm text-gray-500 truncate">
                   <Briefcase className="w-3 h-3 inline mr-1" />
-                  {interviewer.currentCompany || "Independent"}
+                  {interviewer.company}
                 </p>
               </div>
             </div>
@@ -255,10 +315,10 @@ export default function BrowseInterviewersPage() {
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                 <span className="font-semibold text-gray-900">
-                  {interviewer.ratingAverage.toFixed(1)}
+                  {interviewer.rating}
                 </span>
                 <span className="text-sm text-gray-500">
-                  ({interviewer.totalInterviews} sessions)
+                  ({interviewer.reviews} reviews)
                 </span>
               </div>
               <div className="text-right">
@@ -271,7 +331,7 @@ export default function BrowseInterviewersPage() {
 
             {/* Expertise Tags */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {interviewer.industryExpertise.slice(0, 3).map((skill, i) => (
+              {interviewer.expertise.slice(0, 3).map((skill, i) => (
                 <span
                   key={i}
                   className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full"
@@ -285,10 +345,12 @@ export default function BrowseInterviewersPage() {
             <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-100">
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                {interviewer.yearsExperience ?? 0} yrs
+                {interviewer.responseTime}
               </span>
-              <span>{interviewer.totalInterviews} sessions</span>
-              <span className="text-green-600 font-medium">Available</span>
+              <span>{interviewer.totalSessions} sessions</span>
+              <span className="text-green-600 font-medium">
+                {interviewer.availableSlots} slots
+              </span>
             </div>
 
             {/* Hover CTA */}
@@ -300,12 +362,6 @@ export default function BrowseInterviewersPage() {
           </Link>
         ))}
       </div>
-
-      {!loading && !error && sortedInterviewers.length === 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-10 text-center text-gray-600">
-          No interviewers match your filters yet.
-        </div>
-      )}
     </div>
   );
 }

@@ -42,18 +42,18 @@ router.post("/upload-verification", authenticate, authorize("interviewer"), asyn
  * GET /api/interviewers/:id/availability
  * Get interviewer availability slots
  */
-router.get("/:id/availability", asyncHandler(userController.getInterviewerAvailability));
+router.get("/:id/availability", asyncHandler(async (req, res) => {
+  // TODO: Implement get availability slots
+  res.json({ success: true, message: "Get availability slots - not yet implemented", data: { slots: [] } });
+}));
 
 /**
  * PUT /api/interviewers/availability
  * Set availability slots
  */
-router.put(
-  "/availability",
-  authenticate,
-  authorize("interviewer"),
-  checkVerified,
-  asyncHandler(userController.replaceInterviewerAvailability)
-);
+router.put("/availability", authenticate, authorize("interviewer"), asyncHandler(async (req, res) => {
+  // TODO: Implement set availability slots
+  res.json({ success: true, message: "Set availability slots - not yet implemented" });
+}));
 
 export default router;

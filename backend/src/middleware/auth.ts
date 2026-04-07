@@ -1,8 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken, JWTPayload } from "../config/jwt";
-import { db } from "../config/database";
-import { interviewers } from "../db/schema";
-import { eq } from "drizzle-orm";
 
 // Extend Express Request to include user data
 declare global {
@@ -99,50 +96,17 @@ export const checkVerified = async (
   next: NextFunction
 ) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: "NOT_AUTHENTICATED",
-          message: "User not authenticated",
-        },
-      });
-    }
-
-    // Allow non-interviewer roles to continue.
-    if (req.user.userType !== "interviewer") {
-      return next();
-    }
-
-    const [interviewer] = await db
-      .select({
-        isVerified: interviewers.isVerified,
-        verificationStatus: interviewers.verificationStatus,
-      })
-      .from(interviewers)
-      .where(eq(interviewers.userId, req.user.id))
-      .limit(1);
-
-    if (!interviewer) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          code: "INTERVIEWER_PROFILE_NOT_FOUND",
-          message: "Interviewer profile not found",
-        },
-      });
-    }
-
-    if (!interviewer.isVerified || interviewer.verificationStatus !== "approved") {
+    if (req.user?.userType !== "interviewer") {
       return res.status(403).json({
         success: false,
         error: {
-          code: "INTERVIEWER_NOT_VERIFIED",
-          message: "Your interviewer profile is pending admin approval",
+          code: "NOT_INTERVIEWER",
+          message: "This endpoint is for interviewers only",
         },
       });
     }
 
+    // TODO: Fetch interviewer and check if verified
     next();
   } catch (error) {
     return res.status(500).json({

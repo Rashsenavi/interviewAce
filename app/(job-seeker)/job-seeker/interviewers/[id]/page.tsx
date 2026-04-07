@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { interviewerApi, sessionApi } from "@/lib/api";
 import {
   ArrowLeft,
   Star,
@@ -13,6 +12,7 @@ import {
   Calendar,
   Video,
   MessageSquare,
+  Award,
   Globe,
   Users,
   ChevronLeft,
@@ -20,51 +20,76 @@ import {
   X,
 } from "lucide-react";
 
-type InterviewerProfile = {
-  id: number;
-  userId: number;
-  firstName: string;
-  lastName: string;
-  currentCompany: string | null;
-  jobTitle: string | null;
-  yearsExperience: number | null;
-  industryExpertise: string[];
-  hourlyRate: number;
-  bio: string | null;
-  isVerified: boolean;
-  ratingAverage: number;
-  totalInterviews: number;
+// Mock interviewer data (in real app, this would come from API)
+const interviewersData: Record<string, any> = {
+  "1": {
+    id: 1,
+    name: "Kasun Perera",
+    title: "Senior Software Engineer",
+    company: "Google",
+    avatar: "KP",
+    avatarBg: "bg-blue-500",
+    rating: 4.9,
+    reviews: 127,
+    hourlyRate: 5000,
+    expertise: ["Software Engineering", "System Design", "Data Structures", "Algorithms", "Technical Interviews"],
+    industries: ["IT & Software", "Tech Startups"],
+    experience: 8,
+    languages: ["English", "Sinhala"],
+    totalSessions: 245,
+    responseTime: "< 2 hours",
+    verified: true,
+    bio: "I'm a Senior Software Engineer at Google with 8+ years of experience in building large-scale distributed systems. I've conducted 500+ technical interviews and helped over 200 candidates land jobs at top tech companies including Google, Meta, Amazon, and Microsoft. My sessions focus on problem-solving techniques, system design principles, and interview strategies that actually work.",
+    education: "MSc Computer Science - Stanford University",
+    completionRate: 98,
+    reviews_list: [
+      { name: "Thilina R.", rating: 5, date: "Jan 2026", comment: "Excellent session! Kasun helped me understand system design concepts I struggled with for months." },
+      { name: "Amaya S.", rating: 5, date: "Jan 2026", comment: "Very thorough feedback and great tips for coding interviews. Highly recommend!" },
+      { name: "Ravindu F.", rating: 5, date: "Dec 2025", comment: "Helped me crack my Amazon interview. Best investment I made!" },
+    ],
+  },
+  "2": {
+    id: 2,
+    name: "Amaya Fernando",
+    title: "Product Manager",
+    company: "Meta",
+    avatar: "AF",
+    avatarBg: "bg-purple-500",
+    rating: 4.8,
+    reviews: 89,
+    hourlyRate: 6000,
+    expertise: ["Product Management", "Strategy", "User Research", "Product Sense", "Execution"],
+    industries: ["Tech", "E-commerce"],
+    experience: 6,
+    languages: ["English"],
+    totalSessions: 156,
+    responseTime: "< 1 hour",
+    verified: true,
+    bio: "Former Product Manager at Meta with 6 years of experience shipping products used by billions. I specialize in helping candidates prepare for PM interviews at top tech companies. My approach focuses on structured thinking, product sense, and effective communication.",
+    education: "MBA - Harvard Business School",
+    completionRate: 99,
+    reviews_list: [
+      { name: "Sanduni W.", rating: 5, date: "Jan 2026", comment: "Amaya's framework for product questions is incredible. Got an offer from a FAANG company!" },
+      { name: "Kasun P.", rating: 4, date: "Dec 2025", comment: "Great insights into PM interviews. Very helpful mock session." },
+    ],
+  },
 };
 
-type BookingType = "mock" | "coaching";
-
-function generateTimeSlots() {
-  const slots: Array<{ time: string; displayTime: string; available: boolean }> = [];
-
+// Generate time slots for booking
+const generateTimeSlots = () => {
+  const slots = [];
   for (let hour = 9; hour <= 20; hour++) {
     const time = `${hour.toString().padStart(2, "0")}:00`;
-    const displayTime =
-      hour < 12 ? `${hour}:00 AM` : hour === 12 ? "12:00 PM" : `${hour - 12}:00 PM`;
-
-    // Keep predictable availability pattern so UI remains stable.
-    const available = hour % 4 !== 0;
-    slots.push({ time, displayTime, available });
+    const displayTime = hour < 12 ? `${hour}:00 AM` : hour === 12 ? `12:00 PM` : `${hour - 12}:00 PM`;
+    slots.push({ time, displayTime, available: Math.random() > 0.3 });
   }
-
   return slots;
-}
+};
 
-function generateDates() {
-  const dates: Array<{
-    date: Date;
-    day: string;
-    dayNum: number;
-    month: string;
-    full: string;
-  }> = [];
-
+// Generate dates for the next 14 days
+const generateDates = () => {
+  const dates = [];
   const today = new Date();
-
   for (let i = 0; i < 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
@@ -76,127 +101,45 @@ function generateDates() {
       full: date.toISOString().split("T")[0],
     });
   }
-
   return dates;
-}
-
-function getInitials(firstName?: string, lastName?: string) {
-  const first = firstName?.trim()?.[0] ?? "?";
-  const last = lastName?.trim()?.[0] ?? "";
-  return `${first}${last}`.toUpperCase();
-}
-
-function bookingTypeToSessionType(type: BookingType): "behavioral" | "technical" {
-  return type === "mock" ? "technical" : "behavioral";
-}
+};
 
 export default function InterviewerProfilePage() {
   const params = useParams();
   const router = useRouter();
-
-  const interviewerId = useMemo(() => {
-    const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
-    return Number(rawId);
-  }, [params.id]);
-
-  const [interviewer, setInterviewer] = useState<InterviewerProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
+  const interviewerId = params.id as string;
+  
+  const interviewer = interviewersData[interviewerId] || interviewersData["1"];
+  
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [sessionType, setSessionType] = useState<BookingType>("mock");
+  const [sessionType, setSessionType] = useState("mock");
   const [notes, setNotes] = useState("");
   const [dateStartIndex, setDateStartIndex] = useState(0);
   const [isBooking, setIsBooking] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
 
-  const dates = useMemo(() => generateDates(), []);
-  const timeSlots = useMemo(() => generateTimeSlots(), []);
+  const dates = generateDates();
+  const timeSlots = generateTimeSlots();
   const visibleDates = dates.slice(dateStartIndex, dateStartIndex + 7);
 
-  useEffect(() => {
-    const loadInterviewer = async () => {
-      if (!Number.isFinite(interviewerId)) {
-        setError("Invalid interviewer ID.");
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      const response = await interviewerApi.getById(interviewerId);
-
-      if (!response.success || !response.data?.interviewer) {
-        setError(response.error?.message || "Unable to load interviewer profile.");
-        setLoading(false);
-        return;
-      }
-
-      const profile = response.data.interviewer as InterviewerProfile;
-      setInterviewer(profile);
-      setLoading(false);
-    };
-
-    loadInterviewer();
-  }, [interviewerId]);
-
   const handleBookSession = async () => {
-    if (!interviewer || !selectedDate || !selectedTime) return;
-
+    if (!selectedDate || !selectedTime) return;
+    
     setIsBooking(true);
-    setBookingError(null);
-
-    const scheduledDate = new Date(`${selectedDate}T${selectedTime}:00`);
-
-    const response = await sessionApi.create({
-      interviewerUserId: interviewer.userId,
-      sessionType: bookingTypeToSessionType(sessionType),
-      scheduledDate: scheduledDate.toISOString(),
-      duration: 60,
-      priceAmount: interviewer.hourlyRate,
-      notes: notes.trim() || undefined,
-      recordingConsent: true,
-    });
-
-    setIsBooking(false);
-
-    if (!response.success) {
-      setBookingError(response.error?.message || "Booking failed. Please try again.");
-      return;
-    }
-
+    
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    // Navigate to confirmation page
     router.push(
-      `/job-seeker/booking-confirmation?interviewer=${encodeURIComponent(
-        `${interviewer.firstName} ${interviewer.lastName}`
-      )}&date=${selectedDate}&time=${selectedTime}&type=${sessionType}&price=${interviewer.hourlyRate}`
+      `/job-seeker/booking-confirmation?interviewer=${encodeURIComponent(interviewer.name)}&date=${selectedDate}&time=${selectedTime}&type=${sessionType}&price=${interviewer.hourlyRate}`
     );
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-6xl mx-auto">
-        <p className="text-gray-600">Loading interviewer profile...</p>
-      </div>
-    );
-  }
-
-  if (error || !interviewer) {
-    return (
-      <div className="max-w-6xl mx-auto">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-          <p className="text-red-700 text-sm">{error || "Interviewer not found."}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const interviewerName = `${interviewer.firstName} ${interviewer.lastName}`;
-
   return (
     <div className="max-w-6xl mx-auto">
+      {/* Back Button */}
       <Link
         href="/job-seeker/interviewers"
         className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
@@ -206,92 +149,143 @@ export default function InterviewerProfilePage() {
       </Link>
 
       <div className="grid grid-cols-3 gap-8">
+        {/* Left Column - Profile Info */}
         <div className="col-span-2 space-y-6">
+          {/* Profile Header */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-start gap-6">
-              <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-3xl shrink-0">
-                {getInitials(interviewer.firstName, interviewer.lastName)}
+              <div
+                className={`w-24 h-24 ${interviewer.avatarBg} rounded-full flex items-center justify-center text-white font-bold text-3xl shrink-0`}
+              >
+                {interviewer.avatar}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-2xl font-bold text-gray-900">{interviewerName}</h1>
-                  {interviewer.isVerified && (
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {interviewer.name}
+                  </h1>
+                  {interviewer.verified && (
                     <span className="flex items-center gap-1 text-blue-600 text-sm bg-blue-50 px-2 py-1 rounded-full">
                       <CheckCircle className="w-4 h-4" />
                       Verified
                     </span>
                   )}
                 </div>
-                <p className="text-lg text-gray-700 mb-1">{interviewer.jobTitle || "Interviewer"}</p>
+                <p className="text-lg text-gray-700 mb-1">{interviewer.title}</p>
                 <p className="text-gray-500 flex items-center gap-2 mb-4">
                   <Briefcase className="w-4 h-4" />
-                  {interviewer.currentCompany || "Independent"} • {interviewer.yearsExperience ?? 0} years experience
+                  {interviewer.company} • {interviewer.experience} years experience
                 </p>
 
+                {/* Stats Row */}
                 <div className="flex items-center gap-6 text-sm">
                   <div className="flex items-center gap-1">
                     <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                    <span className="font-semibold text-gray-900">{interviewer.ratingAverage.toFixed(1)}</span>
-                    <span className="text-gray-500">({interviewer.totalInterviews} sessions)</span>
+                    <span className="font-semibold text-gray-900">{interviewer.rating}</span>
+                    <span className="text-gray-500">({interviewer.reviews} reviews)</span>
                   </div>
                   <div className="flex items-center gap-1 text-gray-500">
                     <Users className="w-4 h-4" />
-                    {interviewer.totalInterviews} total sessions
+                    {interviewer.totalSessions} sessions
                   </div>
                   <div className="flex items-center gap-1 text-gray-500">
                     <Clock className="w-4 h-4" />
-                    Session duration: 60 min
+                    Responds {interviewer.responseTime}
+                  </div>
+                  <div className="flex items-center gap-1 text-green-600">
+                    <CheckCircle className="w-4 h-4" />
+                    {interviewer.completionRate}% completion
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* About */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">About</h2>
-            <p className="text-gray-600 leading-relaxed">
-              {interviewer.bio || "This interviewer has not added a bio yet."}
-            </p>
+            <p className="text-gray-600 leading-relaxed">{interviewer.bio}</p>
+            
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-sm text-gray-500">
+                <Award className="w-4 h-4 inline mr-2" />
+                {interviewer.education}
+              </p>
+            </div>
           </div>
 
+          {/* Expertise */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Expertise</h2>
             <div className="flex flex-wrap gap-2">
-              {(interviewer.industryExpertise || []).length > 0 ? (
-                interviewer.industryExpertise.map((skill, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
-                  >
-                    {skill}
-                  </span>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500">No expertise listed yet.</p>
-              )}
+              {interviewer.expertise.map((skill: string, i: number) => (
+                <span
+                  key={i}
+                  className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
+                >
+                  {skill}
+                </span>
+              ))}
             </div>
-
+            
             <div className="mt-4 pt-4 border-t border-gray-100">
               <h3 className="text-sm font-medium text-gray-700 mb-2">Languages</h3>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-gray-400" />
-                English
+                {interviewer.languages.map((lang: string, i: number) => (
+                  <span key={i} className="text-sm text-gray-600">
+                    {lang}{i < interviewer.languages.length - 1 ? "," : ""}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
 
+          {/* Reviews */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Reviews</h2>
-            <p className="text-sm text-gray-500">
-              Detailed reviews are not available yet. Session count and ratings are now live from backend data.
-            </p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Recent Reviews ({interviewer.reviews})
+            </h2>
+            <div className="space-y-4">
+              {interviewer.reviews_list.map((review: any, i: number) => (
+                <div key={i} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 text-sm font-medium">
+                        {review.name[0]}
+                      </div>
+                      <span className="font-medium text-gray-900">{review.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, j) => (
+                          <Star
+                            key={j}
+                            className={`w-4 h-4 ${
+                              j < review.rating
+                                ? "text-yellow-400 fill-yellow-400"
+                                : "text-gray-300"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-gray-500">{review.date}</span>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm">{review.comment}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
+        {/* Right Column - Booking Card */}
         <div className="space-y-6">
           <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-24">
             <div className="text-center mb-6">
-              <p className="text-3xl font-bold text-gray-900">LKR {interviewer.hourlyRate.toLocaleString()}</p>
+              <p className="text-3xl font-bold text-gray-900">
+                LKR {interviewer.hourlyRate.toLocaleString()}
+              </p>
               <p className="text-gray-500">per session (1 hour)</p>
             </div>
 
@@ -326,13 +320,15 @@ export default function InterviewerProfilePage() {
         </div>
       </div>
 
+      {/* Booking Modal */}
       {showBookingModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Book a Session</h2>
-                <p className="text-gray-500 text-sm">with {interviewerName}</p>
+                <p className="text-gray-500 text-sm">with {interviewer.name}</p>
               </div>
               <button
                 onClick={() => setShowBookingModal(false)}
@@ -343,6 +339,7 @@ export default function InterviewerProfilePage() {
             </div>
 
             <div className="p-6 space-y-6">
+              {/* Session Type */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Session Type</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -355,7 +352,9 @@ export default function InterviewerProfilePage() {
                     }`}
                   >
                     <p className="font-semibold text-gray-900">Mock Interview</p>
-                    <p className="text-sm text-gray-500">Full interview simulation with feedback</p>
+                    <p className="text-sm text-gray-500">
+                      Full interview simulation with feedback
+                    </p>
                   </button>
                   <button
                     onClick={() => setSessionType("coaching")}
@@ -366,11 +365,14 @@ export default function InterviewerProfilePage() {
                     }`}
                   >
                     <p className="font-semibold text-gray-900">Career Coaching</p>
-                    <p className="text-sm text-gray-500">Guidance, resume review, Q&A</p>
+                    <p className="text-sm text-gray-500">
+                      Guidance, resume review, Q&A
+                    </p>
                   </button>
                 </div>
               </div>
 
+              {/* Select Date */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">Select Date</h3>
                 <div className="flex items-center gap-2">
@@ -408,6 +410,7 @@ export default function InterviewerProfilePage() {
                 </div>
               </div>
 
+              {/* Select Time */}
               {selectedDate && (
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Select Time</h3>
@@ -432,6 +435,7 @@ export default function InterviewerProfilePage() {
                 </div>
               )}
 
+              {/* Notes */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-3">
                   Additional Notes <span className="text-gray-400 font-normal">(optional)</span>
@@ -445,12 +449,7 @@ export default function InterviewerProfilePage() {
                 />
               </div>
 
-              {bookingError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-                  <p className="text-sm text-red-700">{bookingError}</p>
-                </div>
-              )}
-
+              {/* Summary */}
               {selectedDate && selectedTime && (
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-900 mb-2">Booking Summary</h3>
@@ -480,6 +479,7 @@ export default function InterviewerProfilePage() {
               )}
             </div>
 
+            {/* Modal Footer */}
             <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
               <button
                 onClick={() => setShowBookingModal(false)}
