@@ -198,8 +198,31 @@ export const jobSeekerApi = {
 
 // Interviewer API
 export const interviewerApi = {
-  getAll: async () => {
-    return apiClient.get<{ interviewers: any[] }>("/interviewers");
+  getAll: async (params?: {
+    search?: string;
+    industry?: string;
+    company?: string;
+    minRating?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    minExperience?: number;
+    isVerified?: boolean;
+    sortBy?: "rating" | "price" | "experience" | "reviews";
+    sortOrder?: "asc" | "desc";
+  }) => {
+    const query = new URLSearchParams();
+
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.set(key, String(value));
+        }
+      });
+    }
+
+    const queryString = query.toString();
+    const endpoint = queryString ? `/interviewers?${queryString}` : "/interviewers";
+    return apiClient.get<{ interviewers: any[] }>(endpoint);
   },
 
   getById: async (id: number) => {

@@ -2,6 +2,19 @@ import { eq } from "drizzle-orm";
 import { db } from "../config/database";
 import { users, jobSeekers, interviewers } from "../db/schema";
 
+interface InterviewerFilters {
+  search?: string;
+  industry?: string;
+  company?: string;
+  minRating?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minExperience?: number;
+  isVerified?: boolean;
+  sortBy?: "rating" | "price" | "experience" | "reviews";
+  sortOrder?: "asc" | "desc";
+}
+
 /**
  * Get all job seekers
  */
@@ -121,7 +134,7 @@ export const updateJobSeeker = async (
 /**
  * Get all interviewers
  */
-export const getAllInterviewers = async (filters?: { isVerified?: boolean }) => {
+export const getAllInterviewers = async (filters?: InterviewerFilters) => {
   let query = db
     .select({
       id: interviewers.id,
@@ -148,12 +161,80 @@ export const getAllInterviewers = async (filters?: { isVerified?: boolean }) => 
 
   const result = await query;
 
-  return result.map((r) => ({
+  const normalized = result.map((r) => ({
     ...r,
     industryExpertise: r.industryExpertise ? JSON.parse(r.industryExpertise) : [],
     hourlyRate: parseFloat(r.hourlyRate || "0"),
     ratingAverage: parseFloat(r.ratingAverage || "0"),
   }));
+
+  const filtered = normalized.filter((item) => {
+    const fullName = `${item.firstName} ${item.lastName}`.toLowerCase();
+    const search = filters?.search?.toLowerCase().trim();
+    const industry = filters?.industry?.toLowerCase().trim();
+    const company = filters?.company?.toLowerCase().trim();
+
+    const matchesSearch =
+      !search ||
+      fullName.includes(search) ||
+      (item.currentCompany || "").toLowerCase().includes(search) ||
+      (item.jobTitle || "").toLowerCase().includes(search) ||
+      item.industryExpertise.some((expertise: string) =>
+        expertise.toLowerCase().includes(search)
+      );
+
+    const matchesIndustry =
+      !industry ||
+      item.industryExpertise.some((expertise: string) =>
+        expertise.toLowerCase().includes(industry)
+      );
+
+    const matchesCompany =
+      !company || (item.currentCompany || "").toLowerCase().includes(company);
+
+    const matchesMinRating =
+      filters?.minRating === undefined || item.ratingAverage >= filters.minRating;
+
+    const matchesMinPrice =
+      filters?.minPrice === undefined || item.hourlyRate >= filters.minPrice;
+
+    const matchesMaxPrice =
+      filters?.maxPrice === undefined || item.hourlyRate <= filters.maxPrice;
+
+    const matchesMinExperience =
+      filters?.minExperience === undefined ||
+      (item.yearsExperience || 0) >= filters.minExperience;
+
+    const matchesVerification =
+      filters?.isVerified === undefined || item.isVerified === filters.isVerified;
+
+    return (
+      matchesSearch &&
+      matchesIndustry &&
+      matchesCompany &&
+      matchesMinRating &&
+      matchesMinPrice &&
+      matchesMaxPrice &&
+      matchesMinExperience &&
+      matchesVerification
+    );
+  });
+
+  const sortBy = filters?.sortBy || "rating";
+  const sortOrder = filters?.sortOrder || "desc";
+
+  filtered.sort((a, b) => {
+    let diff = 0;
+
+    if (sortBy === "price") diff = a.hourlyRate - b.hourlyRate;
+    if (sortBy === "experience") diff = (a.yearsExperience || 0) - (b.yearsExperience || 0);
+    if (sortBy === "reviews") diff = (a.totalInterviews || 0) - (b.totalInterviews || 0);
+    if (sortBy === "rating") diff = a.ratingAverage - b.ratingAverage;
+
+    return sortOrder === "asc" ? diff : -diff;
+  });
+
+  return filtered;
 };
 
 /**

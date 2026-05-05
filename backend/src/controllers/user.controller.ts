@@ -111,7 +111,43 @@ export const updateJobSeekerProfile = async (req: Request, res: Response) => {
  * Get all interviewers
  */
 export const getAllInterviewers = async (req: Request, res: Response) => {
-  const interviewers = await userService.getAllInterviewers();
+  const parseNumber = (value: unknown): number | undefined => {
+    if (typeof value !== "string" || value.trim() === "") return undefined;
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  };
+
+  const parseBoolean = (value: unknown): boolean | undefined => {
+    if (typeof value !== "string") return undefined;
+    if (value === "true") return true;
+    if (value === "false") return false;
+    return undefined;
+  };
+
+  const sortBy =
+    req.query.sortBy === "price" ||
+    req.query.sortBy === "experience" ||
+    req.query.sortBy === "reviews" ||
+    req.query.sortBy === "rating"
+      ? req.query.sortBy
+      : "rating";
+
+  const sortOrder = req.query.sortOrder === "asc" || req.query.sortOrder === "desc"
+    ? req.query.sortOrder
+    : "desc";
+
+  const interviewers = await userService.getAllInterviewers({
+    search: typeof req.query.search === "string" ? req.query.search : undefined,
+    industry: typeof req.query.industry === "string" ? req.query.industry : undefined,
+    company: typeof req.query.company === "string" ? req.query.company : undefined,
+    minRating: parseNumber(req.query.minRating),
+    minPrice: parseNumber(req.query.minPrice),
+    maxPrice: parseNumber(req.query.maxPrice),
+    minExperience: parseNumber(req.query.minExperience),
+    isVerified: parseBoolean(req.query.isVerified) ?? true,
+    sortBy,
+    sortOrder,
+  });
 
   res.json({
     success: true,
