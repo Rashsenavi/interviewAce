@@ -10,6 +10,7 @@ const client = postgres(process.env.DATABASE_URL!, {
   connect_timeout: 30,
   idle_timeout: 20,
   max_lifetime: 60 * 30,
+  ssl: { rejectUnauthorized: false },
 });
 
 // Create Drizzle ORM instance with schema
