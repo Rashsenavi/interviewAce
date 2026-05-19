@@ -11,6 +11,7 @@ import {
   CalendarDays,
   Users,
 } from "lucide-react";
+import { useAuth } from "@/lib/context/AuthContext";
 
 // Mock data
 const upcomingSessions = [
@@ -81,7 +82,8 @@ const recommendedInterviewers = [
 ];
 
 export default function JobSeekerDashboardPage() {
-  const userName = "Kasun";
+  const { user } = useAuth();
+  const userName = user?.firstName || "Candidate";
   const profileCompletion = 75;
 
   return (

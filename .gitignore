@@ -41,3 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test files and scratch directories
+backend/test-*.js
+backend/test-*.ts
+backend/speed-test.js
+backend/scratch/

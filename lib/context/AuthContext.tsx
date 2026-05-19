@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { User } from "@/lib/types/user";
+import { apiClient } from "@/lib/api";
 
 interface AuthContextType {
   user: User | null;
@@ -26,12 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const storedUser = localStorage.getItem("authUser");
         
         if (token && storedUser) {
+          apiClient.setToken(token);
           setUser(JSON.parse(storedUser));
         }
       } catch (error) {
         console.error("Error loading user from storage:", error);
         localStorage.removeItem("authToken");
         localStorage.removeItem("authUser");
+        apiClient.setToken(null);
       } finally {
         setIsLoading(false);
       }
@@ -43,12 +46,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback((token: string, userData: User) => {
     localStorage.setItem("authToken", token);
     localStorage.setItem("authUser", JSON.stringify(userData));
+    apiClient.setToken(token);
     setUser(userData);
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("authUser");
+    apiClient.setToken(null);
     setUser(null);
   }, []);
 

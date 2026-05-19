@@ -19,7 +19,7 @@ class ApiClient {
     this.baseUrl = baseUrl;
     // Load token from localStorage if available
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("auth_token");
+      this.token = localStorage.getItem("authToken");
     }
   }
 
@@ -27,9 +27,9 @@ class ApiClient {
     this.token = token;
     if (typeof window !== "undefined") {
       if (token) {
-        localStorage.setItem("auth_token", token);
+        localStorage.setItem("authToken", token);
       } else {
-        localStorage.removeItem("auth_token");
+        localStorage.removeItem("authToken");
       }
     }
   }
@@ -235,6 +235,14 @@ export const interviewerApi = {
 
   updateProfile: async (data: any) => {
     return apiClient.put<{ profile: any }>("/interviewers/profile", data);
+  },
+  
+  getAvailability: async (id: number) => {
+    return apiClient.get<{ slots: any[] }>(`/interviewers/${id}/availability`);
+  },
+  
+  updateAvailability: async (slots: any[]) => {
+    return apiClient.put<{ slots: any[] }>("/interviewers/availability", { slots });
   },
 };
 

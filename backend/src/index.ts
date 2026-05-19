@@ -4,9 +4,11 @@ import helmet from "helmet";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import dns from "node:dns";
 
-// Load environment variables
-dotenv.config({ path: ".env.local" });
+dns.setDefaultResultOrder("ipv4first");
+
+// Environment variables are loaded via tsx --env-file
 
 // Import routes
 import authRoutes from "./routes/auth.routes";
@@ -19,7 +21,7 @@ import adminRoutes from "./routes/admin.routes";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
-3
+
 const app: Express = express();
 const PORT = process.env.PORT || 3001;
 
@@ -81,11 +83,31 @@ app.use((req: Request, res: Response) => {
 // Error handling middleware
 app.use(errorHandler);
 
+import { pgClient } from "./config/database";
+
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL}`);
 });
+
+// Graceful shutdown to prevent zombie database connections during hot-reloading
+const gracefulShutdown = async () => {
+  console.log("Shutting down server and closing database connections...");
+  try {
+    await pgClient.end({ timeout: 5 });
+    console.log("Database connections closed.");
+  } catch (err) {
+    console.error("Error closing database connections", err);
+  }
+  server.close(() => {
+    console.log("Server stopped.");
+    process.exit(0);
+  });
+};
+
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
 
 export default app;

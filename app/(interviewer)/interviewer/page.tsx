@@ -1,6 +1,8 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
+import { interviewerApi } from "@/lib/api";
 import Link from "next/link";
 import {
   DollarSign,
@@ -88,7 +90,36 @@ const recentSessions = [
 
 export default function InterviewerDashboardPage() {
   const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      try {
+        const response = await interviewerApi.getProfile();
+        if (response.success && response.data) {
+          setProfile(response.data.profile);
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [user]);
+
   const userName = user?.firstName || "";
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-gray-500">Loading your dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -97,15 +128,38 @@ export default function InterviewerDashboardPage() {
         Welcome back, {userName}! 👋
       </h1>
 
+      {/* Verification Alert */}
+      {!profile?.isVerified && (
+        <div className="mb-8 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-4">
+          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
+            <AlertCircle className="text-orange-600" size={20} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-orange-900">Verification Pending</h3>
+            <p className="text-sm text-orange-700 mt-1">
+              Your profile is currently being reviewed by our team. You will be able to receive session bookings once your identity and credentials are verified.
+            </p>
+            <Link 
+              href="/interviewer/profile" 
+              className="text-sm font-medium text-orange-800 underline mt-2 inline-block"
+            >
+              Complete your profile to speed up the process
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Stats Row */}
       <div className="grid grid-cols-4 gap-6 mb-10">
         {/* This Month Earnings */}
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 mb-2">This Month</p>
-              <p className="text-2xl font-bold text-gray-900 truncate">LKR 85,000</p>
-              <p className="text-xs text-gray-400 mt-2">from last month</p>
+              <p className="text-sm text-gray-500 mb-2">Total Earnings</p>
+              <p className="text-2xl font-bold text-gray-900 truncate">
+                LKR {Number(profile?.totalEarnings || 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-gray-400 mt-2">Lifetime earnings</p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
               <DollarSign size={22} className="text-green-600" />
@@ -117,9 +171,13 @@ export default function InterviewerDashboardPage() {
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 mb-2">Upcoming Sessions</p>
-              <p className="text-3xl font-bold text-gray-900">8</p>
-              <p className="text-xs text-teal-600 mt-2">Next: Today 2:00 PM</p>
+              <p className="text-sm text-gray-500 mb-2">Active Status</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {profile?.isVerified ? "Verified" : "Pending"}
+              </p>
+              <p className="text-xs text-teal-600 mt-2">
+                {profile?.isVerified ? "Ready for bookings" : "Waiting for approval"}
+              </p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
               <Calendar size={22} className="text-blue-600" />
@@ -132,8 +190,10 @@ export default function InterviewerDashboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm text-gray-500 mb-2">Average Rating</p>
-              <p className="text-3xl font-bold text-gray-900">4.8</p>
-              <p className="text-xs text-gray-400 mt-2">42 reviews</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {Number(profile?.ratingAverage || 0).toFixed(1)}
+              </p>
+              <p className="text-xs text-gray-400 mt-2">Based on reviews</p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center shrink-0">
               <Star size={22} className="text-yellow-500" />
@@ -146,8 +206,10 @@ export default function InterviewerDashboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm text-gray-500 mb-2">Total Sessions</p>
-              <p className="text-3xl font-bold text-gray-900">47</p>
-              <p className="text-xs text-gray-400 mt-2">96% completion</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {profile?.totalInterviews || "0"}
+              </p>
+              <p className="text-xs text-gray-400 mt-2">Completed interviews</p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
               <Users size={22} className="text-purple-600" />

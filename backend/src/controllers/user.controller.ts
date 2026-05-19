@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as userService from "../services/user.service";
+import * as availabilityService from "../services/availability.service";
 import { z } from "zod";
 
 // Validation schemas
@@ -28,6 +29,26 @@ const updateInterviewerSchema = z.object({
   hourlyRate: z.number().min(0).optional(),
   bio: z.string().optional(),
   bankAccountNumber: z.string().optional(),
+});
+
+const availabilitySlotSchema = z.object({
+  dayOfWeek: z.enum([
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ]),
+  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
+  isRecurring: z.boolean().default(true),
+  specificDate: z.string().optional(),
+});
+
+const updateAvailabilitySchema = z.object({
+  slots: z.array(availabilitySlotSchema),
 });
 
 /**
@@ -263,6 +284,83 @@ export const getInterviewerById = async (req: Request, res: Response) => {
   });
 };
 
+/**
+ * GET /api/interviewers/:id/availability
+ * Get interviewer availability slots
+ */
+export const getInterviewerAvailability = async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+
+  if (isNaN(userId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: "INVALID_ID", message: "Invalid user ID" },
+    });
+  }
+
+  // Need to get interviewer ID from user ID
+  const profile = await userService.getInterviewerByUserId(userId);
+  if (!profile) {
+    return res.status(404).json({
+      success: false,
+      error: { code: "PROFILE_NOT_FOUND", message: "Interviewer profile not found" },
+    });
+  }
+
+  const slots = await availabilityService.getAvailabilityByInterviewerId(profile.id);
+
+  res.json({
+    success: true,
+    data: { slots },
+  });
+};
+
+/**
+ * PUT /api/interviewers/availability
+ * Update interviewer availability slots (current user)
+ */
+export const updateInterviewerAvailability = async (req: Request, res: Response) => {
+  if (!req.user || req.user.userType !== "interviewer") {
+    return res.status(403).json({
+      success: false,
+      error: { code: "FORBIDDEN", message: "Only interviewers can set availability" },
+    });
+  }
+
+  try {
+    const validatedData = updateAvailabilitySchema.parse(req.body);
+    
+    // Need to get interviewer ID from user ID
+    const profile = await userService.getInterviewerByUserId(req.user.id);
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "PROFILE_NOT_FOUND", message: "Interviewer profile not found" },
+      });
+    }
+
+    const slots = await availabilityService.updateAvailability(profile.id, validatedData.slots);
+
+    res.json({
+      success: true,
+      data: { slots },
+      message: "Availability updated successfully",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid input data",
+          details: error.errors,
+        },
+      });
+    }
+    throw error;
+  }
+};
+
 export default {
   getAllJobSeekers,
   getJobSeekerProfile,
@@ -271,4 +369,6 @@ export default {
   getInterviewerProfile,
   updateInterviewerProfile,
   getInterviewerById,
+  getInterviewerAvailability,
+  updateInterviewerAvailability,
 };
