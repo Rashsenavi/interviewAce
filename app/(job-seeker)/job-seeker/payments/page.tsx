@@ -1,171 +1,144 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CreditCard,
   Wallet,
   Receipt,
   Download,
   Calendar,
-  Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
-  ChevronRight,
   Filter,
   Search,
   DollarSign,
   TrendingUp,
 } from "lucide-react";
+import { paymentApi } from "@/lib/api";
 
-type PaymentStatus = "completed" | "pending" | "failed" | "refunded";
+type PaymentStatus = "completed" | "pending" | "failed" | "refunded" | "held" | "cancelled";
 
 interface Payment {
-  id: string;
-  sessionId: string;
-  interviewerName: string;
-  interviewerAvatar: string;
-  interviewerAvatarBg: string;
-  date: string;
+  id: number;
+  sessionId: number;
   amount: number;
-  status: PaymentStatus;
-  paymentMethod: string;
-  sessionType: string;
-  sessionDate: string;
+  currency: string;
+  paymentMethod: string | null;
+  payhereTransactionId: string | null;
+  paymentStatus: PaymentStatus;
+  refundAmount: number | null;
+  refundReason: string | null;
+  paymentDate: string | null;
+  createdAt: string;
+  session: {
+    type: string;
+    date: string;
+    status: string;
+  };
+  interviewer: {
+    userId: number;
+    firstName: string;
+    lastName: string;
+    jobTitle: string;
+    company: string;
+  };
 }
 
-// Mock payment data
-const paymentsData: Payment[] = [
-  {
-    id: "PAY-20260210001",
-    sessionId: "SES-20260212001",
-    interviewerName: "Nuwan Perera",
-    interviewerAvatar: "NP",
-    interviewerAvatarBg: "bg-blue-500",
-    date: "2026-02-10",
-    amount: 5000,
-    status: "completed",
-    paymentMethod: "Card ending in 4242",
-    sessionType: "Mock Interview",
-    sessionDate: "2026-02-12",
-  },
-  {
-    id: "PAY-20260208001",
-    sessionId: "SES-20260210001",
-    interviewerName: "Dilini Fernando",
-    interviewerAvatar: "DF",
-    interviewerAvatarBg: "bg-purple-500",
-    date: "2026-02-08",
-    amount: 4500,
-    status: "completed",
-    paymentMethod: "Card ending in 4242",
-    sessionType: "Career Coaching",
-    sessionDate: "2026-02-10",
-  },
-  {
-    id: "PAY-20260205001",
-    sessionId: "SES-20260207001",
-    interviewerName: "Kasun Silva",
-    interviewerAvatar: "KS",
-    interviewerAvatarBg: "bg-teal-500",
-    date: "2026-02-05",
-    amount: 5000,
-    status: "completed",
-    paymentMethod: "PayHere Wallet",
-    sessionType: "Mock Interview",
-    sessionDate: "2026-02-07",
-  },
-  {
-    id: "PAY-20260201001",
-    sessionId: "SES-20260203001",
-    interviewerName: "Amaya Jayawardena",
-    interviewerAvatar: "AJ",
-    interviewerAvatarBg: "bg-orange-500",
-    date: "2026-02-01",
-    amount: 4000,
-    status: "refunded",
-    paymentMethod: "Card ending in 1234",
-    sessionType: "Resume Review",
-    sessionDate: "2026-02-03",
-  },
-  {
-    id: "PAY-20260128001",
-    sessionId: "SES-20260130001",
-    interviewerName: "Thilina Rajapaksa",
-    interviewerAvatar: "TR",
-    interviewerAvatarBg: "bg-green-500",
-    date: "2026-01-28",
-    amount: 5000,
-    status: "completed",
-    paymentMethod: "Card ending in 4242",
-    sessionType: "Mock Interview",
-    sessionDate: "2026-01-30",
-  },
-];
+const SESSION_TYPE_LABELS: Record<string, string> = {
+  behavioral: "Behavioral Interview",
+  technical: "Technical Interview",
+  case_study: "Case Study",
+  mixed: "Mixed Interview",
+};
+
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getStatusBadge(status: PaymentStatus) {
+  switch (status) {
+    case "completed":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
+          <CheckCircle className="w-3 h-3" />
+          Completed
+        </span>
+      );
+    case "pending":
+    case "held":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium">
+          <AlertCircle className="w-3 h-3" />
+          Pending
+        </span>
+      );
+    case "failed":
+    case "cancelled":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium">
+          <XCircle className="w-3 h-3" />
+          {status === "failed" ? "Failed" : "Cancelled"}
+        </span>
+      );
+    case "refunded":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+          <Receipt className="w-3 h-3" />
+          Refunded
+        </span>
+      );
+    default:
+      return null;
+  }
+}
 
 export default function PaymentsPage() {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<PaymentStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Calculate stats
-  const totalSpent = paymentsData
-    .filter((p) => p.status === "completed")
-    .reduce((acc, p) => acc + p.amount, 0);
-  const totalPayments = paymentsData.filter((p) => p.status === "completed").length;
-  const refundedAmount = paymentsData
-    .filter((p) => p.status === "refunded")
-    .reduce((acc, p) => acc + p.amount, 0);
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await paymentApi.getAll();
+        if (res.success && res.data?.payments) {
+          setPayments(res.data.payments as Payment[]);
+        } else {
+          setError(res.error?.message || "Failed to load payment history");
+        }
+      } catch {
+        setError("An error occurred. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  // Filter payments
-  const filteredPayments = paymentsData.filter((payment) => {
-    const matchesStatus = filterStatus === "all" || payment.status === filterStatus;
-    const matchesSearch = payment.interviewerName
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+  const completedPayments = payments.filter((p) => p.paymentStatus === "completed");
+  const totalSpent = completedPayments.reduce((acc, p) => acc + p.amount, 0);
+  const totalPayments = completedPayments.length;
+  const refundedAmount = payments
+    .filter((p) => p.paymentStatus === "refunded")
+    .reduce((acc, p) => acc + (p.refundAmount ?? p.amount), 0);
+  const avgPerSession = totalPayments > 0 ? totalSpent / totalPayments : 0;
+
+  const filteredPayments = payments.filter((payment) => {
+    const matchesStatus = filterStatus === "all" || payment.paymentStatus === filterStatus;
+    const interviewerName = `${payment.interviewer.firstName} ${payment.interviewer.lastName}`;
+    const matchesSearch = interviewerName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const getStatusBadge = (status: PaymentStatus) => {
-    switch (status) {
-      case "completed":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
-            <CheckCircle className="w-3 h-3" />
-            Completed
-          </span>
-        );
-      case "pending":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium">
-            <AlertCircle className="w-3 h-3" />
-            Pending
-          </span>
-        );
-      case "failed":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 rounded-full text-xs font-medium">
-            <XCircle className="w-3 h-3" />
-            Failed
-          </span>
-        );
-      case "refunded":
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
-            <Receipt className="w-3 h-3" />
-            Refunded
-          </span>
-        );
-    }
-  };
 
   return (
     <div className="w-full">
@@ -174,6 +147,12 @@ export default function PaymentsPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Payments & Billing</h1>
         <p className="text-gray-600">View your payment history and download receipts</p>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
@@ -184,7 +163,7 @@ export default function PaymentsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">
-                LKR {totalSpent.toLocaleString()}
+                {loading ? "—" : `LKR ${totalSpent.toLocaleString()}`}
               </p>
               <p className="text-sm text-gray-500">Total Spent</p>
             </div>
@@ -197,7 +176,9 @@ export default function PaymentsPage() {
               <Receipt className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{totalPayments}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {loading ? "—" : totalPayments}
+              </p>
               <p className="text-sm text-gray-500">Transactions</p>
             </div>
           </div>
@@ -210,7 +191,7 @@ export default function PaymentsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">
-                LKR {Math.round(totalSpent / totalPayments).toLocaleString()}
+                {loading ? "—" : totalPayments > 0 ? `LKR ${Math.round(avgPerSession).toLocaleString()}` : "—"}
               </p>
               <p className="text-sm text-gray-500">Avg. per Session</p>
             </div>
@@ -224,30 +205,11 @@ export default function PaymentsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">
-                LKR {refundedAmount.toLocaleString()}
+                {loading ? "—" : `LKR ${refundedAmount.toLocaleString()}`}
               </p>
               <p className="text-sm text-gray-500">Refunded</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Payment Methods Card */}
-      <div className="bg-linear-to-r from-blue-600 to-blue-700 rounded-xl p-6 mb-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold mb-1">Default Payment Method</h3>
-            <div className="flex items-center gap-3">
-              <CreditCard className="w-8 h-8" />
-              <div>
-                <p className="font-medium">•••• •••• •••• 4242</p>
-                <p className="text-blue-200 text-sm">Expires 12/28</p>
-              </div>
-            </div>
-          </div>
-          <button className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            Manage Payment Methods
-          </button>
         </div>
       </div>
 
@@ -260,7 +222,7 @@ export default function PaymentsPage() {
               <span className="text-sm text-gray-600">Status:</span>
             </div>
             <div className="flex gap-1">
-              {["all", "completed", "pending", "refunded"].map((status) => (
+              {["all", "completed", "pending", "refunded", "failed"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status as PaymentStatus | "all")}
@@ -280,7 +242,7 @@ export default function PaymentsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by interviewer..."
+              placeholder="Search by interviewer…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
@@ -296,78 +258,104 @@ export default function PaymentsPage() {
         </div>
 
         <div className="divide-y divide-gray-100">
-          {filteredPayments.length === 0 ? (
+          {loading ? (
+            <div className="p-12 text-center text-gray-400 text-sm">Loading payment history…</div>
+          ) : filteredPayments.length === 0 ? (
             <div className="p-12 text-center">
               <Receipt className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No payments found</h3>
-              <p className="text-gray-500">No payments match your search criteria.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {payments.length === 0 ? "No payments yet" : "No payments found"}
+              </h3>
+              <p className="text-gray-500">
+                {payments.length === 0
+                  ? "Your payment history will appear here after booking a session."
+                  : "No payments match your search criteria."}
+              </p>
             </div>
           ) : (
-            filteredPayments.map((payment) => (
-              <div key={payment.id} className="p-5 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center gap-4">
-                  {/* Interviewer Avatar */}
-                  <div
-                    className={`w-12 h-12 ${payment.interviewerAvatarBg} rounded-full flex items-center justify-center text-white font-semibold shrink-0`}
-                  >
-                    {payment.interviewerAvatar}
+            filteredPayments.map((payment) => {
+              const interviewerName = `${payment.interviewer.firstName} ${payment.interviewer.lastName}`;
+              const initials = `${payment.interviewer.firstName[0]}${payment.interviewer.lastName[0]}`;
+              const isRefund = payment.paymentStatus === "refunded";
+
+              return (
+                <div key={payment.id} className="p-5 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold shrink-0">
+                      {initials}
+                    </div>
+
+                    {/* Payment Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-gray-900">{interviewerName}</h4>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-sm text-gray-600">
+                          {SESSION_TYPE_LABELS[payment.session.type] || payment.session.type}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          Session: {formatDate(payment.session.date)}
+                        </span>
+                        {payment.paymentMethod && (
+                          <span className="flex items-center gap-1">
+                            <CreditCard className="w-4 h-4" />
+                            {payment.paymentMethod}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Amount & Status */}
+                    <div className="text-right">
+                      <p
+                        className={`text-lg font-bold ${
+                          isRefund ? "text-blue-600" : "text-gray-900"
+                        }`}
+                      >
+                        {isRefund ? "+" : "-"}{payment.currency}{" "}
+                        {(isRefund ? (payment.refundAmount ?? payment.amount) : payment.amount).toLocaleString()}
+                      </p>
+                      <div className="flex items-center justify-end gap-2 mt-1">
+                        {getStatusBadge(payment.paymentStatus)}
+                      </div>
+                    </div>
+
+                    {/* Download action */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        title="Download receipt"
+                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+                      >
+                        <Download className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Payment Details */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold text-gray-900">{payment.interviewerName}</h4>
-                      <span className="text-gray-400">•</span>
-                      <span className="text-sm text-gray-600">{payment.sessionType}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        Session: {formatDate(payment.sessionDate)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <CreditCard className="w-4 h-4" />
-                        {payment.paymentMethod}
-                      </span>
-                    </div>
+                  <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      {payment.payhereTransactionId
+                        ? `Transaction: ${payment.payhereTransactionId}`
+                        : `Payment #${payment.id}`}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {payment.paymentDate
+                        ? `Paid on ${formatDate(payment.paymentDate)}`
+                        : `Created ${formatDate(payment.createdAt)}`}
+                    </span>
                   </div>
 
-                  {/* Amount & Status */}
-                  <div className="text-right">
-                    <p
-                      className={`text-lg font-bold ${
-                        payment.status === "refunded" ? "text-blue-600" : "text-gray-900"
-                      }`}
-                    >
-                      {payment.status === "refunded" ? "+" : "-"}LKR{" "}
-                      {payment.amount.toLocaleString()}
+                  {payment.refundReason && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Refund reason: {payment.refundReason}
                     </p>
-                    <div className="flex items-center justify-end gap-2 mt-1">
-                      {getStatusBadge(payment.status)}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
-                      <Download className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
+                  )}
                 </div>
-
-                <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
-                    Transaction ID: {payment.id}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    Paid on {formatDate(payment.date)}
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

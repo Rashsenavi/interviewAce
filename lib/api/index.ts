@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+const API_BASE_URL = typeof window !== 'undefined' ? '/api' : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api");
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -261,8 +261,12 @@ export const sessionApi = {
     return apiClient.post<{ session: any }>("/sessions", data);
   },
 
-  getAll: async () => {
-    return apiClient.get<{ sessions: any[] }>("/sessions");
+  getAll: async (params?: { status?: string; upcoming?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    if (params?.upcoming) query.set("upcoming", "true");
+    const qs = query.toString();
+    return apiClient.get<{ sessions: any[] }>(qs ? `/sessions?${qs}` : "/sessions");
   },
 
   getById: async (id: number) => {
@@ -282,4 +286,69 @@ export const sessionApi = {
   },
 };
 
+// Feedback API
+export const feedbackApi = {
+  getPending: async () => {
+    return apiClient.get<{ pending: any[] }>("/feedback/pending");
+  },
+
+  getSubmitted: async () => {
+    return apiClient.get<{ submitted: any[] }>("/feedback/submitted");
+  },
+
+  submit: async (data: {
+    sessionId: number;
+    feedbackForUserId: number;
+    feedbackType: "seeker_to_interviewer" | "interviewer_to_seeker";
+    ratingOverall: number;
+    ratingCommunication?: number;
+    ratingTechnical?: number;
+    ratingProfessionalism?: number;
+    ratingHelpfulness?: number;
+    writtenFeedback?: string;
+    improvementSuggestions?: string;
+    strengthsIdentified?: string;
+    wouldRecommend?: boolean;
+    isAnonymous?: boolean;
+  }) => {
+    return apiClient.post<{ feedback: any }>("/feedback", data);
+  },
+};
+
+// Payment API
+export const paymentApi = {
+  getAll: async (params?: { status?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    const qs = query.toString();
+    return apiClient.get<{ payments: any[] }>(qs ? `/payments?${qs}` : "/payments");
+  },
+};
+
+// Question API
+export const questionApi = {
+  getAll: async (params?: {
+    type?: string;
+    difficulty?: string;
+    role?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "" && value !== "all") {
+          query.set(key, String(value));
+        }
+      });
+    }
+    const qs = query.toString();
+    return apiClient.get<{ questions: any[]; total: number; stats: any }>(
+      qs ? `/questions?${qs}` : "/questions"
+    );
+  },
+};
+
 export default apiClient;
+

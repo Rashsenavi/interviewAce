@@ -18,6 +18,7 @@ import sessionRoutes from "./routes/session.routes";
 import paymentRoutes from "./routes/payment.routes";
 import feedbackRoutes from "./routes/feedback.routes";
 import adminRoutes from "./routes/admin.routes";
+import questionsRoutes from "./routes/questions.routes";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -70,6 +71,7 @@ app.use("/api/sessions", sessionRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/questions", questionsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

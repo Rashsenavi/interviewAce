@@ -91,7 +91,7 @@ export const getJobSeekerSessions = async (
     return [];
   }
 
-  let query = db
+  const query = db
     .select({
       id: interviewSessions.id,
       sessionType: interviewSessions.sessionType,
@@ -100,15 +100,18 @@ export const getJobSeekerSessions = async (
       meetingLink: interviewSessions.meetingLink,
       sessionStatus: interviewSessions.sessionStatus,
       priceAmount: interviewSessions.priceAmount,
+      cancellationReason: interviewSessions.cancellationReason,
       notes: interviewSessions.notes,
       createdAt: interviewSessions.createdAt,
       interviewer: {
         id: interviewers.id,
+        userId: interviewers.userId,
         firstName: users.firstName,
         lastName: users.lastName,
         currentCompany: interviewers.currentCompany,
         jobTitle: interviewers.jobTitle,
         ratingAverage: interviewers.ratingAverage,
+        isVerified: interviewers.isVerified,
       },
     })
     .from(interviewSessions)
@@ -119,7 +122,7 @@ export const getJobSeekerSessions = async (
 
   const sessions = await query;
 
-  return sessions.map((s) => ({
+  const mapped = sessions.map((s) => ({
     ...s,
     priceAmount: parseFloat(s.priceAmount || "0"),
     interviewer: {
@@ -127,6 +130,23 @@ export const getJobSeekerSessions = async (
       ratingAverage: parseFloat(s.interviewer.ratingAverage || "0"),
     },
   }));
+
+  // Filter upcoming (scheduled/rescheduled in the future)
+  if (upcoming) {
+    const now = new Date();
+    return mapped.filter(
+      (s) =>
+        (s.sessionStatus === "scheduled" || s.sessionStatus === "rescheduled") &&
+        new Date(s.scheduledDate!) > now
+    );
+  }
+
+  // Filter by status if provided
+  if (status) {
+    return mapped.filter((s) => s.sessionStatus === status);
+  }
+
+  return mapped;
 };
 
 /**
