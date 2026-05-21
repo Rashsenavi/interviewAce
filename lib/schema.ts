@@ -153,6 +153,9 @@ export const interviewers = pgTable(
     ),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
+    nicUrl: text("nic_url"),
+    appointmentLetterUrl: text("appointment_letter_url"),
+    verificationNotes: text("verification_notes"),
   },
   (table) => [
     index("idx_interviewers_user_id").on(table.userId),

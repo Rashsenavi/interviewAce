@@ -128,6 +128,7 @@ export const interviewers = pgTable("interviewers", {
   updatedAt: timestamp("updated_at").defaultNow(),
   nicUrl: text("nic_url"),
   appointmentLetterUrl: text("appointment_letter_url"),
+  verificationNotes: text("verification_notes"),
 });
 
 // Admins Table

@@ -350,5 +350,29 @@ export const questionApi = {
   },
 };
 
-export default apiClient;
+// Admin API
+export const adminApi = {
+  getPendingVerifications: async () => {
+    return apiClient.get<{ data: any[] }>("/admin/verification/pending");
+  },
+  getVerificationDetails: async (id: number | string) => {
+    return apiClient.get<{ data: any }>(`/admin/verification/${id}`);
+  },
+  approveVerification: async (id: number | string) => {
+    return apiClient.put<{ data: any }>(`/admin/verification/${id}/approve`);
+  },
+  rejectVerification: async (id: number | string, notes: string) => {
+    return apiClient.put<{ data: any }>(`/admin/verification/${id}/reject`, { notes });
+  },
+  getAllUsers: async () => {
+    return apiClient.get<{ data: any[] }>("/admin/users");
+  },
+  updateUserStatus: async (id: number | string, isActive: boolean) => {
+    return apiClient.put<{ data: any }>(`/admin/users/${id}/status`, { isActive });
+  },
+  deleteUser: async (id: number | string) => {
+    return apiClient.delete<{ success: boolean }>(`/admin/users/${id}`);
+  },
+};
 
+export default apiClient;

@@ -301,14 +301,20 @@ function ApproveRejectButtons({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
 
-  const handleAction = async (action: "approve" | "reject") => {
+  const handleAction = async (action: "approve" | "reject", notes?: string) => {
     setLoading(true);
     setError(null);
 
     try {
       const res = await fetch(`/api/admin/verification/${interviewerId}/${action}`, {
         method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(notes ? { notes } : {}),
         cache: "no-store",
       });
       const data = await res.json();
@@ -318,6 +324,7 @@ function ApproveRejectButtons({
       }
 
       onAction(action);
+      setIsRejectModalOpen(false);
     } catch (actionError: unknown) {
       const fallbackMessage = `Failed to ${action} interviewer`;
       const message = actionError instanceof Error ? actionError.message : fallbackMessage;
@@ -341,14 +348,52 @@ function ApproveRejectButtons({
         <button
           className="inline-flex items-center gap-1 rounded-lg bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
           disabled={loading}
-          onClick={() => handleAction("reject")}
+          onClick={() => setIsRejectModalOpen(true)}
         >
           <XCircle className="h-4 w-4" />
           Reject
         </button>
       </div>
 
-      {error ? <p className="text-xs text-red-600 mt-2">{error}</p> : null}
+      {error && !isRejectModalOpen && <p className="text-xs text-red-600 mt-2">{error}</p>}
+
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900">Reject Verification</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Please provide a reason for rejecting this interviewer's documents. They will see this message.
+            </p>
+
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g., NIC image is blurry, please re-upload."
+              className="mt-4 h-24 w-full rounded-xl border border-slate-300 p-3 text-sm outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+            />
+
+            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setIsRejectModalOpen(false)}
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleAction("reject", rejectReason)}
+                disabled={loading || !rejectReason.trim()}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+              >
+                {loading ? "Rejecting..." : "Confirm Rejection"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

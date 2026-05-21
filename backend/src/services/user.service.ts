@@ -258,6 +258,7 @@ export const getInterviewerByUserId = async (userId: number) => {
       bio: interviewers.bio,
       isVerified: interviewers.isVerified,
       verificationStatus: interviewers.verificationStatus,
+      verificationNotes: interviewers.verificationNotes,
       ratingAverage: interviewers.ratingAverage,
       totalInterviews: interviewers.totalInterviews,
       totalEarnings: interviewers.totalEarnings,

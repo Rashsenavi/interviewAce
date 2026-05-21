@@ -6,6 +6,9 @@ import {
   getVerificationDetails,
   approveVerification,
   rejectVerification,
+  getAllUsersHandler,
+  updateUserStatusHandler,
+  deleteUserHandler,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -45,11 +48,20 @@ router.get("/analytics", authenticate, authorize("admin"), async (req, res) => {
 
 /**
  * GET /api/admin/users
- * Get all users with pagination and filters
+ * Get all users
  */
-router.get("/users", authenticate, authorize("admin"), async (req, res) => {
-  // TODO: Implement get users
-  res.json({ message: "Get users" });
-});
+router.get("/users", authenticate, authorize("admin"), asyncHandler(getAllUsersHandler));
+
+/**
+ * PUT /api/admin/users/:userId/status
+ * Update user active status (Suspend/Activate)
+ */
+router.put("/users/:userId/status", authenticate, authorize("admin"), asyncHandler(updateUserStatusHandler));
+
+/**
+ * DELETE /api/admin/users/:userId
+ * Delete a user account
+ */
+router.delete("/users/:userId", authenticate, authorize("admin"), asyncHandler(deleteUserHandler));
 
 export default router;

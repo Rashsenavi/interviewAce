@@ -128,26 +128,48 @@ export default function InterviewerDashboardPage() {
         Welcome back, {userName}! 👋
       </h1>
 
-      {/* Verification Alert */}
-      {!profile?.isVerified && (
-        <div className="mb-8 bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-start gap-4">
-          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center shrink-0">
-            <AlertCircle className="text-orange-600" size={20} />
+      {/* Verification Gating */}
+      {!profile?.isVerified ? (
+        profile?.verificationStatus === "rejected" ? (
+          <div className="max-w-3xl mt-4">
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-red-900 mb-2">Action Required</h2>
+              <p className="text-red-700 mb-6">Your interviewer application requires your attention before we can approve it.</p>
+              
+              <div className="bg-white rounded-xl p-6 text-left border border-red-100 shadow-sm mb-6 max-w-xl mx-auto">
+                <h3 className="font-semibold text-gray-900 mb-2">Admin Feedback:</h3>
+                <p className="text-gray-700 whitespace-pre-wrap">{profile.verificationNotes || "Please review your documents and ensure they meet our requirements."}</p>
+              </div>
+
+              <p className="text-sm text-red-600 mb-6">Please contact support or re-upload your documents through your profile settings.</p>
+              <Link href="/interviewer/profile" className="inline-block bg-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-red-700 transition">
+                Update Documents
+              </Link>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-orange-900">Verification Pending</h3>
-            <p className="text-sm text-orange-700 mt-1">
-              Your profile is currently being reviewed by our team. You will be able to receive session bookings once your identity and credentials are verified.
-            </p>
-            <Link 
-              href="/interviewer/profile" 
-              className="text-sm font-medium text-orange-800 underline mt-2 inline-block"
-            >
-              Complete your profile to speed up the process
-            </Link>
+        ) : (
+          <div className="max-w-3xl mt-4">
+            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-8 text-center">
+              <Clock className="w-16 h-16 text-indigo-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-indigo-900 mb-2">Reviewing Your Documents</h2>
+              <p className="text-indigo-700 max-w-lg mx-auto mb-6">
+                Thank you for joining InterviewAce! Our team is currently reviewing your professional documents. This usually takes 1-2 business days.
+              </p>
+              <p className="text-sm text-indigo-600/80">
+                We will notify you via email once your account is verified. In the meantime, you can review your profile.
+              </p>
+              <div className="mt-6">
+                <Link href="/interviewer/profile" className="inline-block bg-white text-indigo-700 border border-indigo-200 px-6 py-2 rounded-xl font-semibold hover:bg-indigo-50 transition">
+                  View Profile
+                </Link>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      ) : (
+        <>
+
 
       {/* Stats Row */}
       <div className="grid grid-cols-4 gap-6 mb-10">
@@ -463,6 +485,8 @@ export default function InterviewerDashboardPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

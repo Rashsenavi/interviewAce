@@ -45,7 +45,8 @@ const roleConfig: Record<
     badge: "bg-indigo-50 text-indigo-700",
     items: [
       { label: "Overview", href: "/admin", icon: LayoutDashboard },
-      { label: "Interviewers", href: "/admin/interviewers", icon: Users },
+      { label: "User Management", href: "/admin/users", icon: Users },
+      { label: "Verifications", href: "/admin/interviewers", icon: Shield },
     ],
   },
   interviewer: {
@@ -58,7 +59,6 @@ const roleConfig: Record<
       { label: "Sessions", href: "/interviewer/sessions", icon: Video },
       { label: "Earnings", href: "/interviewer/earnings", icon: DollarSign },
       { label: "Feedback", href: "/interviewer/feedback", icon: MessageSquare },
-      { label: "Verification", href: "/interviewer/verification-pending", icon: Shield },
     ],
   },
   job_seeker: {
@@ -132,7 +132,14 @@ export default function DashboardShell({ role, children }: DashboardShellProps) 
       </div>
 
       <div className="flex-1 space-y-1 px-3 py-4">
-        {config.items.map((item) => {
+        {config.items.filter((item) => {
+          if (role === "interviewer") {
+            if (!user?.isVerified && item.href !== "/interviewer") {
+              return false;
+            }
+          }
+          return true;
+        }).map((item) => {
           const active = isActivePath(pathname, item.href);
           const Icon = item.icon;
           return (
