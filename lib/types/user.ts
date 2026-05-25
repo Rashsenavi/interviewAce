@@ -58,6 +58,7 @@ export interface Interviewer {
   totalInterviews: number;
   totalEarnings: number;
   commissionRate: number;
+  preferredMeetingPlatform?: "zoom" | "teams";
   createdAt: Date;
   updatedAt: Date;
 }

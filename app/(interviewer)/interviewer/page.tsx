@@ -31,6 +31,7 @@ const upcomingSessions = [
     price: 5000,
     status: "confirmed",
     tags: ["Technical Interview", "Software Engineering"],
+    meetingLink: "https://zoom.us/j/123456789",
   },
   {
     id: 2,
@@ -43,6 +44,7 @@ const upcomingSessions = [
     price: 6000,
     status: "confirmed",
     tags: ["Mock Interview", "Product Management"],
+    meetingLink: "https://teams.microsoft.com/l/meetup-join/19%3ameeting_xyz",
   },
   {
     id: 3,
@@ -55,6 +57,7 @@ const upcomingSessions = [
     price: 5000,
     status: "pending",
     tags: ["Behavioral Interview", "Marketing"],
+    meetingLink: "", // Not generated until confirmed
   },
 ];
 
@@ -92,6 +95,19 @@ export default function InterviewerDashboardPage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Make sessions stateful so the user can paste and save links during the demo
+  const [sessions, setSessions] = useState(upcomingSessions);
+  const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
+  const [tempLink, setTempLink] = useState("");
+
+  const handleSaveLink = (id: number) => {
+    setSessions(prev => 
+      prev.map(s => s.id === id ? { ...s, meetingLink: tempLink } : s)
+    );
+    setEditingSessionId(null);
+    setTempLink("");
+  };
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -257,7 +273,7 @@ export default function InterviewerDashboardPage() {
             </div>
 
             <div className="divide-y divide-gray-100">
-              {upcomingSessions.map((session) => (
+              {sessions.map((session) => (
                 <div key={session.id} className="p-6">
                   <div className="flex items-start gap-4">
                     {/* Avatar */}
@@ -322,10 +338,48 @@ export default function InterviewerDashboardPage() {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2">
-                        <button className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                          <Video size={16} />
-                          Join Session
-                        </button>
+                        {session.meetingLink ? (
+                          <a 
+                            href={session.meetingLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                          >
+                            <Video size={16} />
+                            Join Session
+                          </a>
+                        ) : editingSessionId === session.id ? (
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="url"
+                              placeholder="Paste meet link here..."
+                              value={tempLink}
+                              onChange={(e) => setTempLink(e.target.value)}
+                              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              autoFocus
+                            />
+                            <button 
+                              onClick={() => handleSaveLink(session.id)}
+                              className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+                            >
+                              Save
+                            </button>
+                            <button 
+                              onClick={() => { setEditingSessionId(null); setTempLink(""); }}
+                              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => { setEditingSessionId(session.id); setTempLink(""); }}
+                            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
+                          >
+                            <Video size={16} />
+                            + Add Meet Link
+                          </button>
+                        )}
                         <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
                           Contact
                         </button>

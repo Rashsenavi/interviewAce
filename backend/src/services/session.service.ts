@@ -21,6 +21,8 @@ export interface CreateSessionInput {
   recordingConsent?: boolean;
 }
 
+import { meetingService } from "./meetings/MeetingService";
+
 /**
  * Create a new interview session
  */
@@ -39,9 +41,12 @@ export const createSession = async (input: CreateSessionInput) => {
     throw error;
   }
 
-  // Get interviewer id
+  // Get interviewer id and preference
   const [interviewer] = await db
-    .select({ id: interviewers.id })
+    .select({ 
+      id: interviewers.id,
+      preferredMeetingPlatform: interviewers.preferredMeetingPlatform
+    })
     .from(interviewers)
     .where(eq(interviewers.userId, input.interviewerUserId))
     .limit(1);
@@ -51,6 +56,24 @@ export const createSession = async (input: CreateSessionInput) => {
     error.status = 404;
     error.code = "INTERVIEWER_NOT_FOUND";
     throw error;
+  }
+
+  // Generate the video meeting link using the Strategy Pattern!
+  let meetingLink = "";
+  try {
+    const result = await meetingService.generateMeeting(
+      (interviewer.preferredMeetingPlatform as "zoom" | "teams") || "zoom",
+      {
+        topic: `Interview Session - ${input.sessionType}`,
+        startTime: input.scheduledDate,
+        durationMinutes: input.duration,
+      }
+    );
+    meetingLink = result.joinUrl;
+  } catch (error) {
+    console.error("Failed to generate meeting link during session creation", error);
+    // Continue session creation even if meeting link generation fails temporarily
+    meetingLink = "PENDING_GENERATION";
   }
 
   // Create session
@@ -66,6 +89,7 @@ export const createSession = async (input: CreateSessionInput) => {
       priceAmount: input.priceAmount.toString(),
       notes: input.notes,
       recordingConsent: input.recordingConsent ?? false,
+      meetingLink: meetingLink, // Inject generated link
     })
     .returning();
 

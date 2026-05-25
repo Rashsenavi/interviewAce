@@ -101,6 +101,11 @@ export const jobSeekers = pgTable("job_seekers", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const meetingPlatformEnum = pgEnum("meeting_platform", [
+  "zoom",
+  "teams",
+]);
+
 // Interviewers Table
 export const interviewers = pgTable("interviewers", {
   id: serial("id").primaryKey(),
@@ -124,6 +129,7 @@ export const interviewers = pgTable("interviewers", {
   totalInterviews: integer("total_interviews").default(0),
   totalEarnings: decimal("total_earnings", { precision: 15, scale: 2 }).default("0"),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("20"),
+  preferredMeetingPlatform: meetingPlatformEnum("preferred_meeting_platform").default("zoom"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   nicUrl: text("nic_url"),

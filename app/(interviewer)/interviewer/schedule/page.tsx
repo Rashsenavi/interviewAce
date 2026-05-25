@@ -247,6 +247,20 @@ export default function SchedulePage() {
     );
   };
 
+  const updateSlotTime = (dayIndex: number, slotId: string, field: "startTime" | "endTime", value: string) => {
+    setAvailability((prev) => 
+      prev.map((day, idx) => {
+        if (idx !== dayIndex) return day;
+        return {
+          ...day,
+          slots: day.slots.map((slot) => 
+            slot.id === slotId ? { ...slot, [field]: value } : slot
+          ),
+        };
+      })
+    );
+  };
+
   const addSlot = (dayIndex: number) => {
     setAvailability((prev) => 
       prev.map((day, idx) => {

@@ -29,6 +29,7 @@ const updateInterviewerSchema = z.object({
   hourlyRate: z.number().min(0).optional(),
   bio: z.string().optional(),
   bankAccountNumber: z.string().optional(),
+  preferredMeetingPlatform: z.enum(["zoom", "teams"]).optional(),
 });
 
 const availabilitySlotSchema = z.object({
