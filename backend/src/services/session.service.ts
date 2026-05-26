@@ -16,7 +16,6 @@ export interface CreateSessionInput {
   sessionType: "behavioral" | "technical" | "case_study" | "mixed";
   scheduledDate: Date;
   duration: number;
-  priceAmount: number;
   notes?: string;
   recordingConsent?: boolean;
 }
@@ -45,7 +44,9 @@ export const createSession = async (input: CreateSessionInput) => {
   const [interviewer] = await db
     .select({ 
       id: interviewers.id,
-      preferredMeetingPlatform: interviewers.preferredMeetingPlatform
+      preferredMeetingPlatform: interviewers.preferredMeetingPlatform,
+      hourlyRate: interviewers.hourlyRate,
+      commissionRate: interviewers.commissionRate
     })
     .from(interviewers)
     .where(eq(interviewers.userId, input.interviewerUserId))
@@ -58,6 +59,17 @@ export const createSession = async (input: CreateSessionInput) => {
     throw error;
   }
 
+  // Calculate total price (Base Rate + System Fee on top)
+  const baseRate = (parseFloat(interviewer.hourlyRate) / 60) * input.duration;
+  const commissionRate = parseFloat(interviewer.commissionRate || "20");
+  const platformCommission = baseRate * (commissionRate / 100);
+  let totalPrice = Math.round((baseRate + platformCommission) * 100) / 100;
+  
+  // Ensure PayHere minimum limit (30 LKR)
+  if (totalPrice < 30) {
+    totalPrice = 30;
+  }
+
   // Create session
   const [session] = await db
     .insert(interviewSessions)
@@ -68,7 +80,7 @@ export const createSession = async (input: CreateSessionInput) => {
       sessionType: input.sessionType,
       scheduledDate: input.scheduledDate,
       duration: input.duration,
-      priceAmount: input.priceAmount.toString(),
+      priceAmount: totalPrice.toString(),
       notes: input.notes,
       recordingConsent: input.recordingConsent ?? false,
       meetingLink: null, // Defer meeting link generation until confirmation

@@ -17,13 +17,14 @@ import {
   calculateRefundAmount,
 } from "../utils/payhere.utils";
 
-const MERCHANT_ID = process.env.NEXT_PUBLIC_PAYHERE_MERCHANT_ID || "";
+const MERCHANT_ID = process.env.PAYHERE_MERCHANT_ID || "";
 const MERCHANT_SECRET = process.env.PAYHERE_MERCHANT_SECRET || "";
-const SANDBOX = process.env.NEXT_PUBLIC_PAYHERE_SANDBOX === "true";
+const SANDBOX = process.env.PAYHERE_MODE === "sandbox";
 const CHECKOUT_URL =
-  process.env.NEXT_PUBLIC_PAYHERE_CHECKOUT_URL ||
-  "https://sandbox.payhere.lk/pay/checkout";
-const APP_URL = process.env.NEXT_PUBLIC_PAYHERE_APP_URL || "http://localhost:3000";
+  SANDBOX
+    ? "https://sandbox.payhere.lk/pay/checkout"
+    : "https://www.payhere.lk/pay/checkout";
+const APP_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 // ─── INITIATE PAYMENT ───────────────────────────────────────────────────────
 
@@ -77,8 +78,11 @@ export const initiatePayment = async (sessionId: number, userId: number) => {
 
   const amount = parseFloat(session.priceAmount);
   const commissionRate = parseFloat(interviewer?.commissionRate || "20");
-  const platformCommission = Math.round((amount * commissionRate) / 100 * 100) / 100;
-  const interviewerPayout = Math.round((amount - platformCommission) * 100) / 100;
+  
+  // amount is TotalPrice (BaseRate + SystemFee)
+  const baseRate = amount / (1 + commissionRate / 100);
+  const platformCommission = Math.round((amount - baseRate) * 100) / 100;
+  const interviewerPayout = Math.round(baseRate * 100) / 100;
 
   const orderId = generateOrderId(sessionId);
   const currency = "LKR";
@@ -134,7 +138,6 @@ export const initiatePayment = async (sessionId: number, userId: number) => {
       city: "Colombo",
       country: "Sri Lanka",
       hash,
-      sandbox: SANDBOX ? "1" : "0",
     },
   };
 };

@@ -14,6 +14,7 @@ export default function InterviewerProfilePage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   const [preferredPlatform, setPreferredPlatform] = useState<"zoom" | "teams">("zoom");
+  const [hourlyRate, setHourlyRate] = useState<string>("0");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -22,6 +23,7 @@ export default function InterviewerProfilePage() {
         if (response.success && response.data?.profile) {
           setProfile(response.data.profile);
           setPreferredPlatform(response.data.profile.preferredMeetingPlatform || "zoom");
+          setHourlyRate(response.data.profile.hourlyRate || "0");
         }
       } catch (err) {
         console.error("Failed to load profile", err);
@@ -40,6 +42,7 @@ export default function InterviewerProfilePage() {
     try {
       const response = await interviewerApi.updateProfile({
         preferredMeetingPlatform: preferredPlatform,
+        hourlyRate: parseFloat(hourlyRate) || 0,
       });
 
       if (response.success) {
@@ -140,6 +143,33 @@ export default function InterviewerProfilePage() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Pricing Settings */}
+            <div className="pt-6 border-t border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Pricing Settings</h3>
+              <div className="max-w-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Base Hourly Rate (LKR)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-sm">Rs.</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(e.target.value)}
+                    className="pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm p-2.5 border"
+                    placeholder="2500"
+                  />
+                </div>
+                <p className="mt-2 text-sm text-gray-500">
+                  This is the base amount you earn per 60-minute session. A 20% platform fee will be added on top of this rate when shown to the job seeker.
+                </p>
               </div>
             </div>
 

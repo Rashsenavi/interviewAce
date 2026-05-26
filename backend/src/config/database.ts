@@ -13,11 +13,9 @@ const globalForPostgres = globalThis as unknown as {
 };
 
 const client = globalForPostgres.postgresClient ?? postgres(connectionString, {
-  connect_timeout: 120,
   max_lifetime: 60 * 30,
-  max: 5, // Allow up to 5 concurrent connections to prevent query queueing and timeouts
+  max: 5,
   prepare: false,
-  idle_timeout: 0,
   ssl: { rejectUnauthorized: false },
 });
 

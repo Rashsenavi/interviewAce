@@ -21,60 +21,7 @@ import {
   X,
 } from "lucide-react";
 
-// Mock interviewer data (in real app, this would come from API)
-const interviewersData: Record<string, any> = {
-  "1": {
-    id: 1,
-    name: "Kasun Perera",
-    title: "Senior Software Engineer",
-    company: "Google",
-    avatar: "KP",
-    avatarBg: "bg-blue-500",
-    rating: 4.9,
-    reviews: 127,
-    hourlyRate: 5000,
-    expertise: ["Software Engineering", "System Design", "Data Structures", "Algorithms", "Technical Interviews"],
-    industries: ["IT & Software", "Tech Startups"],
-    experience: 8,
-    languages: ["English", "Sinhala"],
-    totalSessions: 245,
-    responseTime: "< 2 hours",
-    verified: true,
-    bio: "I'm a Senior Software Engineer at Google with 8+ years of experience in building large-scale distributed systems. I've conducted 500+ technical interviews and helped over 200 candidates land jobs at top tech companies including Google, Meta, Amazon, and Microsoft. My sessions focus on problem-solving techniques, system design principles, and interview strategies that actually work.",
-    education: "MSc Computer Science - Stanford University",
-    completionRate: 98,
-    reviews_list: [
-      { name: "Thilina R.", rating: 5, date: "Jan 2026", comment: "Excellent session! Kasun helped me understand system design concepts I struggled with for months." },
-      { name: "Amaya S.", rating: 5, date: "Jan 2026", comment: "Very thorough feedback and great tips for coding interviews. Highly recommend!" },
-      { name: "Ravindu F.", rating: 5, date: "Dec 2025", comment: "Helped me crack my Amazon interview. Best investment I made!" },
-    ],
-  },
-  "2": {
-    id: 2,
-    name: "Amaya Fernando",
-    title: "Product Manager",
-    company: "Meta",
-    avatar: "AF",
-    avatarBg: "bg-purple-500",
-    rating: 4.8,
-    reviews: 89,
-    hourlyRate: 6000,
-    expertise: ["Product Management", "Strategy", "User Research", "Product Sense", "Execution"],
-    industries: ["Tech", "E-commerce"],
-    experience: 6,
-    languages: ["English"],
-    totalSessions: 156,
-    responseTime: "< 1 hour",
-    verified: true,
-    bio: "Former Product Manager at Meta with 6 years of experience shipping products used by billions. I specialize in helping candidates prepare for PM interviews at top tech companies. My approach focuses on structured thinking, product sense, and effective communication.",
-    education: "MBA - Harvard Business School",
-    completionRate: 99,
-    reviews_list: [
-      { name: "Sanduni W.", rating: 5, date: "Jan 2026", comment: "Amaya's framework for product questions is incredible. Got an offer from a FAANG company!" },
-      { name: "Kasun P.", rating: 4, date: "Dec 2025", comment: "Great insights into PM interviews. Very helpful mock session." },
-    ],
-  },
-};
+
 
 // Generate time slots for booking
 const generateTimeSlots = () => {
@@ -119,6 +66,7 @@ export default function InterviewerProfilePage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [sessionType, setSessionType] = useState("mock");
+  const [sessionDuration, setSessionDuration] = useState<30 | 60>(60);
   const [notes, setNotes] = useState("");
   const [dateStartIndex, setDateStartIndex] = useState(0);
   const [isBooking, setIsBooking] = useState(false);
@@ -217,8 +165,7 @@ export default function InterviewerProfilePage() {
         interviewerUserId: parseInt(userId),
         sessionType: backendSessionType,
         scheduledDate: scheduledDate,
-        duration: 60,
-        priceAmount: interviewer.hourlyRate,
+        duration: sessionDuration,
         notes: notes || undefined,
         recordingConsent: false,
       });
@@ -437,7 +384,7 @@ export default function InterviewerProfilePage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6 sticky top-24">
             <div className="text-center mb-6">
               <p className="text-3xl font-bold text-gray-900">
-                LKR {(interviewer.hourlyRate || 0).toLocaleString()}
+                LKR {(parseFloat(interviewer.hourlyRate || "0")).toLocaleString()}
               </p>
               <p className="text-gray-500">per session (1 hour)</p>
             </div>
@@ -463,7 +410,7 @@ export default function InterviewerProfilePage() {
               </div>
               <div className="flex items-center gap-2 text-gray-600">
                 <Clock className="w-4 h-4" />
-                60 minute session
+                30 or 60 minute sessions
               </div>
               <div className="flex items-center gap-2 text-gray-600">
                 <CheckCircle className="w-4 h-4" />
@@ -522,6 +469,33 @@ export default function InterviewerProfilePage() {
                     <p className="text-sm text-gray-500">
                       Guidance, resume review, Q&A
                     </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Session Duration */}
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-3">Session Duration</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setSessionDuration(30)}
+                    className={`p-4 rounded-lg border-2 text-center transition-colors ${
+                      sessionDuration === 30
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="font-semibold text-gray-900">30 Minutes</p>
+                  </button>
+                  <button
+                    onClick={() => setSessionDuration(60)}
+                    className={`p-4 rounded-lg border-2 text-center transition-colors ${
+                      sessionDuration === 60
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <p className="font-semibold text-gray-900">60 Minutes</p>
                   </button>
                 </div>
               </div>
@@ -604,33 +578,54 @@ export default function InterviewerProfilePage() {
               </div>
 
               {/* Summary */}
-              {selectedDate && selectedTime && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Booking Summary</h3>
-                  <div className="space-y-1 text-sm">
-                    <p className="text-gray-600">
-                      <span className="font-medium">Date:</span>{" "}
-                      {new Date(selectedDate).toLocaleDateString("en-US", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </p>
-                    <p className="text-gray-600">
-                      <span className="font-medium">Time:</span>{" "}
-                      {timeSlots.find((s) => s.time === selectedTime)?.displayTime}
-                    </p>
-                    <p className="text-gray-600">
-                      <span className="font-medium">Type:</span>{" "}
-                      {sessionType === "mock" ? "Mock Interview" : "Career Coaching"}
-                    </p>
-                    <p className="text-gray-900 font-bold mt-2 pt-2 border-t border-gray-200">
-                      Total: LKR {interviewer.hourlyRate.toLocaleString()}
-                    </p>
+              {selectedDate && selectedTime && (() => {
+                const baseRate = (parseFloat(interviewer.hourlyRate || "0") / 60) * sessionDuration;
+                const commissionRate = parseFloat(interviewer.commissionRate || "20");
+                const platformCommission = baseRate * (commissionRate / 100);
+                const totalPrice = Math.max(30, baseRate + platformCommission);
+
+                return (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 mb-2">Booking Summary</h3>
+                    <div className="space-y-1 text-sm">
+                      <p className="text-gray-600">
+                        <span className="font-medium">Date:</span>{" "}
+                        {new Date(selectedDate).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                      <p className="text-gray-600">
+                        <span className="font-medium">Time:</span>{" "}
+                        {timeSlots.find((s) => s.time === selectedTime)?.displayTime}
+                      </p>
+                      <p className="text-gray-600">
+                        <span className="font-medium">Duration:</span> {sessionDuration} Minutes
+                      </p>
+                      <p className="text-gray-600">
+                        <span className="font-medium">Type:</span>{" "}
+                        {sessionType === "mock" ? "Mock Interview" : "Career Coaching"}
+                      </p>
+                      <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
+                        <div className="flex justify-between text-gray-600">
+                          <span>Interviewer Rate</span>
+                          <span>LKR {baseRate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600">
+                          <span>System Fee ({commissionRate}%)</span>
+                          <span>LKR {platformCommission.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-900 font-bold text-base mt-2">
+                          <span>Total</span>
+                          <span>LKR {totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}

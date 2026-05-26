@@ -9,7 +9,6 @@ const createSessionSchema = z.object({
   sessionType: z.enum(["behavioral", "technical", "case_study", "mixed"]),
   scheduledDate: z.string().transform((str) => new Date(str)),
   duration: z.number().min(15).max(180),
-  priceAmount: z.number().min(0),
   notes: z.string().optional(),
   recordingConsent: z.boolean().optional(),
 });
