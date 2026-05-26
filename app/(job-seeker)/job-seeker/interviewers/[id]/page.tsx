@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { interviewerApi, sessionApi } from "@/lib/api";
+import { interviewerApi, sessionApi, paymentApi } from "@/lib/api";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -212,7 +212,8 @@ export default function InterviewerProfilePage() {
       const scheduledDate = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
       const backendSessionType = sessionType === "coaching" ? "behavioral" : "technical";
       
-      const response = await sessionApi.create({
+      // Step 1: Create the session
+      const sessionResponse = await sessionApi.create({
         interviewerUserId: parseInt(userId),
         sessionType: backendSessionType,
         scheduledDate: scheduledDate,
@@ -222,18 +223,41 @@ export default function InterviewerProfilePage() {
         recordingConsent: false,
       });
 
-      if (response.success) {
-        // Navigate to confirmation page
-        router.push(
-          `/job-seeker/booking-confirmation?interviewer=${encodeURIComponent(interviewer.firstName + " " + interviewer.lastName)}&date=${selectedDate}&time=${selectedTime}&type=${sessionType}&price=${interviewer.hourlyRate}`
-        );
-      } else {
-        alert(response.error?.message || "Failed to book session");
+      if (!sessionResponse.success || !sessionResponse.data?.session?.id) {
+        alert(sessionResponse.error?.message || "Failed to create session");
+        setIsBooking(false);
+        return;
       }
+
+      const sessionId = sessionResponse.data.session.id;
+
+      // Step 2: Initiate PayHere payment
+      const paymentResponse = await paymentApi.initiate(sessionId);
+
+      if (!paymentResponse.success || !paymentResponse.data) {
+        alert(paymentResponse.error?.message || "Failed to initiate payment");
+        setIsBooking(false);
+        return;
+      }
+
+      // Step 3: Redirect to PayHere via dynamic form submission
+      const { checkoutUrl, formParams } = paymentResponse.data;
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = checkoutUrl;
+      Object.entries(formParams).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value as string;
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+      // Note: page will navigate away — no need to setIsBooking(false)
     } catch (err) {
       console.error("Booking error:", err);
       alert("An unexpected error occurred while booking.");
-    } finally {
       setIsBooking(false);
     }
   };

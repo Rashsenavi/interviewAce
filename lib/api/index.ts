@@ -317,11 +317,52 @@ export const feedbackApi = {
 
 // Payment API
 export const paymentApi = {
+  /** Get job seeker payment history */
   getAll: async (params?: { status?: string }) => {
     const query = new URLSearchParams();
     if (params?.status) query.set("status", params.status);
     const qs = query.toString();
     return apiClient.get<{ payments: any[] }>(qs ? `/payments?${qs}` : "/payments");
+  },
+
+  /** Initiate PayHere payment for a session → returns form params + hash */
+  initiate: async (sessionId: number) => {
+    return apiClient.post<{ checkoutUrl: string; formParams: Record<string, string> }>(
+      "/payments/initiate",
+      { sessionId }
+    );
+  },
+
+  /** Get payment status by PayHere order ID (for booking-confirmation page) */
+  getByOrderId: async (orderId: string) => {
+    return apiClient.get<{ payment: any }>(`/payments/status/${orderId}`);
+  },
+
+  /** Interviewer: get their earnings (optionally filtered by month "2026-05") */
+  getEarnings: async (month?: string) => {
+    const qs = month ? `?month=${month}` : "";
+    return apiClient.get<any>(`/payments/earnings${qs}`);
+  },
+
+  /** Admin: get all interviewers' payout summary for a month */
+  getAdminPayouts: async (month: string) => {
+    return apiClient.get<{ payouts: any[]; month: string }>(`/payments/admin/payouts?month=${month}`);
+  },
+
+  /** Admin: release payouts for selected interviewers in a month */
+  releasePayouts: async (interviewerIds: number[], month: string) => {
+    return apiClient.post<{ released: number[]; skipped: number }>(
+      "/payments/admin/payouts/release",
+      { interviewerIds, month }
+    );
+  },
+
+  /** Cancel payment for a session (applies tiered refund policy) */
+  cancel: async (sessionId: number) => {
+    return apiClient.post<{ refundAmount: number; reason: string; newStatus: string }>(
+      `/payments/cancel/${sessionId}`,
+      {}
+    );
   },
 };
 

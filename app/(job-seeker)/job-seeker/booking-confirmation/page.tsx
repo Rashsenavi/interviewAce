@@ -1,218 +1,237 @@
 "use client";
 
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { paymentApi } from "@/lib/api";
 import {
   CheckCircle,
-  Calendar,
+  XCircle,
   Clock,
-  Video,
-  User,
-  Download,
-  Mail,
+  Calendar,
+  CreditCard,
   ArrowRight,
-  FileText,
-  Bell,
+  Loader2,
 } from "lucide-react";
-import { Suspense } from "react";
+
+type PaymentStatus = "loading" | "success" | "pending" | "failed" | "cancelled" | "unknown";
 
 function BookingConfirmationContent() {
   const searchParams = useSearchParams();
-  
-  const interviewer = searchParams.get("interviewer") || "Kasun Perera";
-  const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
-  const time = searchParams.get("time") || "10:00";
-  const type = searchParams.get("type") || "mock";
-  const price = searchParams.get("price") || "5000";
+  const orderId = searchParams.get("order_id");
+  const sessionId = searchParams.get("session_id");
 
-  const formattedDate = new Date(date).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const [status, setStatus] = useState<PaymentStatus>("loading");
+  const [payment, setPayment] = useState<any>(null);
+  const [pollCount, setPollCount] = useState(0);
 
-  const formattedTime = parseInt(time.split(":")[0]) < 12 
-    ? `${time} AM` 
-    : parseInt(time.split(":")[0]) === 12 
-    ? `${time} PM` 
-    : `${parseInt(time.split(":")[0]) - 12}:00 PM`;
+  useEffect(() => {
+    if (!orderId) {
+      setStatus("unknown");
+      return;
+    }
 
-  // Generate a mock booking ID
-  const bookingId = `INT-${Date.now().toString().slice(-8)}`;
+    // Poll for payment status — PayHere webhook may take a few seconds
+    const checkStatus = async () => {
+      try {
+        const res = await paymentApi.getByOrderId(orderId);
+        if (res.success && res.data?.payment) {
+          const p = res.data.payment;
+          setPayment(p);
+          if (p.paymentStatus === "held" || p.paymentStatus === "completed") {
+            setStatus("success");
+            return true;
+          } else if (p.paymentStatus === "failed") {
+            setStatus("failed");
+            return true;
+          } else if (p.paymentStatus === "cancelled") {
+            setStatus("cancelled");
+            return true;
+          }
+        }
+      } catch {
+        // Ignore polling errors
+      }
+      return false;
+    };
+
+    // Check immediately, then poll every 3 seconds up to 10 times
+    let interval: NodeJS.Timeout;
+    checkStatus().then((done) => {
+      if (!done) {
+        let count = 0;
+        interval = setInterval(async () => {
+          count++;
+          setPollCount(count);
+          const isDone = await checkStatus();
+          if (isDone || count >= 10) {
+            clearInterval(interval);
+            if (!isDone) setStatus("pending");
+          }
+        }, 3000);
+      }
+    });
+
+    return () => clearInterval(interval);
+  }, [orderId]);
+
+  const renderIcon = () => {
+    switch (status) {
+      case "loading":
+        return <Loader2 className="w-16 h-16 text-blue-500 animate-spin" />;
+      case "success":
+        return <CheckCircle className="w-16 h-16 text-green-500" />;
+      case "pending":
+        return <Clock className="w-16 h-16 text-yellow-500" />;
+      case "failed":
+      case "cancelled":
+        return <XCircle className="w-16 h-16 text-red-500" />;
+      default:
+        return <Clock className="w-16 h-16 text-gray-400" />;
+    }
+  };
+
+  const renderTitle = () => {
+    switch (status) {
+      case "loading":
+        return "Verifying Payment…";
+      case "success":
+        return "Booking Confirmed! 🎉";
+      case "pending":
+        return "Payment Processing";
+      case "failed":
+        return "Payment Failed";
+      case "cancelled":
+        return "Payment Cancelled";
+      default:
+        return "Payment Status Unknown";
+    }
+  };
+
+  const renderMessage = () => {
+    switch (status) {
+      case "loading":
+        return `We're confirming your payment with PayHere${pollCount > 0 ? ` (checking… ${pollCount}/10)` : ""}`;
+      case "success":
+        return "Your payment was successful and your session is now booked. The interviewer will review your request shortly.";
+      case "pending":
+        return "Your payment is still being processed. This usually takes a few minutes. Check your payment history for updates.";
+      case "failed":
+        return "Your payment could not be processed. Please try again or use a different payment method.";
+      case "cancelled":
+        return "You cancelled the payment. Your session booking has not been confirmed.";
+      default:
+        return "We couldn't find your payment details. Please check your payment history.";
+    }
+  };
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
-      {/* Success Animation */}
-      <div className="text-center mb-8">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-          <CheckCircle className="w-12 h-12 text-green-600" />
-        </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Booking Confirmed! 🎉
-        </h1>
-        <p className="text-gray-600">
-          Your interview session has been successfully scheduled
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+        {/* Colored top band */}
+        <div
+          className={`h-2 w-full ${
+            status === "success"
+              ? "bg-green-500"
+              : status === "loading" || status === "pending"
+              ? "bg-blue-500"
+              : "bg-red-500"
+          }`}
+        />
 
-      {/* Booking Details Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-        <div className="bg-linear-to-r from-blue-600 to-blue-700 p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm mb-1">Booking Reference</p>
-              <p className="text-2xl font-bold">{bookingId}</p>
+        <div className="p-8 text-center">
+          {/* Icon */}
+          <div className="flex justify-center mb-6">{renderIcon()}</div>
+
+          {/* Title */}
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">{renderTitle()}</h1>
+
+          {/* Message */}
+          <p className="text-gray-600 mb-6">{renderMessage()}</p>
+
+          {/* Payment Details (if available) */}
+          {payment && status === "success" && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 text-left space-y-2">
+              <div className="flex items-center gap-2 text-sm text-green-800">
+                <CreditCard className="w-4 h-4 shrink-0" />
+                <span>
+                  Amount: <strong>{payment.currency || "LKR"} {parseFloat(payment.amount || "0").toLocaleString()}</strong>
+                </span>
+              </div>
+              {payment.payhereTransactionId && (
+                <div className="flex items-center gap-2 text-sm text-green-700">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  <span>Transaction ID: <strong>{payment.payhereTransactionId}</strong></span>
+                </div>
+              )}
+              {orderId && (
+                <div className="flex items-center gap-2 text-sm text-green-700">
+                  <Calendar className="w-4 h-4 shrink-0" />
+                  <span>Order ID: <strong>{orderId}</strong></span>
+                </div>
+              )}
             </div>
-            <div className="text-right">
-              <p className="text-blue-100 text-sm mb-1">Amount Paid</p>
-              <p className="text-2xl font-bold">LKR {parseInt(price).toLocaleString()}</p>
+          )}
+
+          {/* Refund policy info for pending */}
+          {(status === "success" || status === "pending") && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6 text-xs text-blue-700 text-left">
+              <p className="font-semibold mb-1">💡 Cancellation Policy</p>
+              <p>• Cancel 24h+ before session → Full refund</p>
+              <p>• Cancel 2–24h before session → 50% refund</p>
+              <p>• Cancel within 2h → No refund</p>
             </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {status === "success" && (
+              <>
+                <Link
+                  href="/job-seeker/sessions"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  View My Sessions
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/job-seeker/payments"
+                  className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-6 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+                >
+                  View Payments
+                </Link>
+              </>
+            )}
+
+            {status === "pending" && (
+              <Link
+                href="/job-seeker/payments"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+              >
+                Check Payment History
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
+
+            {(status === "failed" || status === "cancelled") && (
+              <>
+                <Link
+                  href="/job-seeker/interviewers"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  Try Again
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/job-seeker"
+                  className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-6 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors"
+                >
+                  Go to Dashboard
+                </Link>
+              </>
+            )}
           </div>
         </div>
-
-        <div className="p-6 space-y-6">
-          {/* Interviewer Info */}
-          <div className="flex items-center gap-4 pb-6 border-b border-gray-100">
-            <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-              {interviewer.split(" ").map((n) => n[0]).join("")}
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Interview with</p>
-              <p className="text-xl font-semibold text-gray-900">{interviewer}</p>
-              <p className="text-gray-600">
-                {type === "mock" ? "Mock Interview Session" : "Career Coaching Session"}
-              </p>
-            </div>
-          </div>
-
-          {/* Session Details */}
-          <div className="grid grid-cols-2 gap-6">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Date</p>
-                <p className="font-semibold text-gray-900">{formattedDate}</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Time</p>
-                <p className="font-semibold text-gray-900">{formattedTime}</p>
-                <p className="text-xs text-gray-500">Duration: 60 minutes</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                <Video className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Platform</p>
-                <p className="font-semibold text-gray-900">Google Meet</p>
-                <p className="text-xs text-gray-500">Link will be sent via email</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                <FileText className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Session Type</p>
-                <p className="font-semibold text-gray-900">
-                  {type === "mock" ? "Mock Interview" : "Career Coaching"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* What's Next */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">What's Next?</h2>
-        <div className="space-y-4">
-          <div className="flex items-start gap-4">
-            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-              <span className="text-green-600 font-semibold text-sm">1</span>
-            </div>
-            <div>
-              <p className="font-medium text-gray-900">Confirmation Email Sent</p>
-              <p className="text-sm text-gray-600">
-                Check your inbox for booking details and calendar invite
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-              <span className="text-blue-600 font-semibold text-sm">2</span>
-            </div>
-            <div>
-              <p className="font-medium text-gray-900">Prepare for Your Session</p>
-              <p className="text-sm text-gray-600">
-                Review common interview questions and practice beforehand
-              </p>
-            </div>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
-              <span className="text-purple-600 font-semibold text-sm">3</span>
-            </div>
-            <div>
-              <p className="font-medium text-gray-900">Join 10 Minutes Early</p>
-              <p className="text-sm text-gray-600">
-                Test your audio/video and be ready to make the most of your session
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Reminder Box */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-        <div className="flex items-start gap-3">
-          <Bell className="w-5 h-5 text-yellow-600 mt-0.5" />
-          <div>
-            <p className="font-medium text-yellow-800">Reminder Set</p>
-            <p className="text-sm text-yellow-700">
-              You'll receive a reminder email 24 hours and 1 hour before your session.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Link
-          href="/job-seeker/sessions"
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
-        >
-          View My Sessions
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-        <Link
-          href="/job-seeker/interviewers"
-          className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-lg font-semibold text-center"
-        >
-          Book Another Session
-        </Link>
-      </div>
-
-      {/* Need Help */}
-      <div className="text-center mt-8 pt-6 border-t border-gray-200">
-        <p className="text-gray-600 text-sm">
-          Need to reschedule or cancel?{" "}
-          <Link href="/job-seeker/sessions" className="text-blue-600 hover:underline font-medium">
-            Manage your booking
-          </Link>
-        </p>
       </div>
     </div>
   );
@@ -220,12 +239,13 @@ function BookingConfirmationContent() {
 
 export default function BookingConfirmationPage() {
   return (
-    <Suspense fallback={
-      <div className="max-w-2xl mx-auto py-8 text-center">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading confirmation...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+        </div>
+      }
+    >
       <BookingConfirmationContent />
     </Suspense>
   );

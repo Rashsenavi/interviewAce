@@ -40,6 +40,12 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "refunded",
   "cancelled",
 ]);
+export const payoutStatusEnum = pgEnum("payout_status", [
+  "pending",
+  "processing",
+  "paid",
+  "failed",
+]);
 export const feedbackTypeEnum = pgEnum("feedback_type", [
   "interviewer_to_seeker",
   "seeker_to_interviewer",
@@ -237,12 +243,57 @@ export const payments = pgTable("payments", {
   interviewerPayout: decimal("interviewer_payout", { precision: 12, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 10 }).default("LKR"),
   paymentMethod: varchar("payment_method", { length: 50 }),
+  payhereOrderId: varchar("payhere_order_id", { length: 100 }),
   payhereTransactionId: varchar("payhere_transaction_id", { length: 100 }),
+  payhereRawStatus: integer("payhere_raw_status"),
   paymentStatus: paymentStatusEnum("payment_status").default("pending"),
   refundAmount: decimal("refund_amount", { precision: 12, scale: 2 }),
   refundReason: text("refund_reason"),
   paymentDate: timestamp("payment_date"),
   refundDate: timestamp("refund_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Interviewer Earnings Table — one row per completed session
+export const interviewerEarnings = pgTable("interviewer_earnings", {
+  id: serial("id").primaryKey(),
+  interviewerId: integer("interviewer_id")
+    .notNull()
+    .references(() => interviewers.id, { onDelete: "cascade" }),
+  sessionId: integer("session_id")
+    .notNull()
+    .unique()
+    .references(() => interviewSessions.id, { onDelete: "cascade" }),
+  paymentId: integer("payment_id").references(() => payments.id),
+  grossAmount: decimal("gross_amount", { precision: 12, scale: 2 }).notNull(),
+  commissionDeducted: decimal("commission_deducted", { precision: 12, scale: 2 }).notNull(),
+  netEarning: decimal("net_earning", { precision: 12, scale: 2 }).notNull(),
+  sessionDurationHours: decimal("session_duration_hours", { precision: 5, scale: 2 }),
+  payoutMonth: varchar("payout_month", { length: 7 }), // e.g. "2026-05"
+  payoutId: integer("payout_id"),                       // references interviewerPayouts.id (added after)
+  earnedAt: timestamp("earned_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Interviewer Payouts Table — monthly salary releases by admin
+export const interviewerPayouts = pgTable("interviewer_payouts", {
+  id: serial("id").primaryKey(),
+  interviewerId: integer("interviewer_id")
+    .notNull()
+    .references(() => interviewers.id, { onDelete: "cascade" }),
+  payoutMonth: varchar("payout_month", { length: 7 }).notNull(), // "2026-05"
+  totalSessions: integer("total_sessions").notNull().default(0),
+  totalHours: decimal("total_hours", { precision: 8, scale: 2 }).notNull().default("0"),
+  grossAmount: decimal("gross_amount", { precision: 12, scale: 2 }).notNull(),
+  commissionDeducted: decimal("commission_deducted", { precision: 12, scale: 2 }).notNull(),
+  netPayoutAmount: decimal("net_payout_amount", { precision: 12, scale: 2 }).notNull(),
+  payoutStatus: payoutStatusEnum("payout_status").default("pending"),
+  bankAccountNumber: varchar("bank_account_number", { length: 50 }),
+  releasedByAdminId: integer("released_by_admin_id").references(() => admins.id),
+  releasedAt: timestamp("released_at"),
+  autoReleased: boolean("auto_released").default(false),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

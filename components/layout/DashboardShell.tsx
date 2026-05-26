@@ -47,6 +47,7 @@ const roleConfig: Record<
       { label: "Overview", href: "/admin", icon: LayoutDashboard },
       { label: "User Management", href: "/admin/users", icon: Users },
       { label: "Verifications", href: "/admin/interviewers", icon: Shield },
+      { label: "Payouts", href: "/admin/payouts", icon: DollarSign },
     ],
   },
   interviewer: {
