@@ -15,7 +15,7 @@ const createSessionSchema = z.object({
 });
 
 const updateStatusSchema = z.object({
-  status: z.enum(["scheduled", "rescheduled", "in_progress", "completed", "cancelled", "no_show"]),
+  status: z.enum(["pending", "scheduled", "rescheduled", "in_progress", "completed", "cancelled", "no_show"]),
   reason: z.string().optional(),
 });
 

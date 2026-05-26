@@ -112,4 +112,13 @@ const gracefulShutdown = async () => {
 process.on("SIGTERM", gracefulShutdown);
 process.on("SIGINT", gracefulShutdown);
 
+// Add global handlers to prevent server crashes due to uncaught errors (e.g. database statement timeouts)
+process.on("uncaughtException", (error) => {
+  console.error("CRITICAL: Uncaught Exception:", error);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("CRITICAL: Unhandled Rejection at:", promise, "reason:", reason);
+});
+
 export default app;

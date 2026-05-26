@@ -58,24 +58,6 @@ export const createSession = async (input: CreateSessionInput) => {
     throw error;
   }
 
-  // Generate the video meeting link using the Strategy Pattern!
-  let meetingLink = "";
-  try {
-    const result = await meetingService.generateMeeting(
-      (interviewer.preferredMeetingPlatform as "zoom" | "teams") || "zoom",
-      {
-        topic: `Interview Session - ${input.sessionType}`,
-        startTime: input.scheduledDate,
-        durationMinutes: input.duration,
-      }
-    );
-    meetingLink = result.joinUrl;
-  } catch (error) {
-    console.error("Failed to generate meeting link during session creation", error);
-    // Continue session creation even if meeting link generation fails temporarily
-    meetingLink = "PENDING_GENERATION";
-  }
-
   // Create session
   const [session] = await db
     .insert(interviewSessions)
@@ -89,7 +71,7 @@ export const createSession = async (input: CreateSessionInput) => {
       priceAmount: input.priceAmount.toString(),
       notes: input.notes,
       recordingConsent: input.recordingConsent ?? false,
-      meetingLink: meetingLink, // Inject generated link
+      meetingLink: null, // Defer meeting link generation until confirmation
     })
     .returning();
 
@@ -286,6 +268,33 @@ export const updateSessionStatus = async (
     sessionStatus: status,
     updatedAt: new Date(),
   };
+
+  // Generate meeting link if status is changing to scheduled (accepted) and it doesn't have one yet
+  if (status === "scheduled" && (!session.meetingLink || session.meetingLink === "PENDING_GENERATION" || session.meetingLink === "")) {
+    // Get interviewer's platform preference
+    const [interviewer] = await db
+      .select({ preferredMeetingPlatform: interviewers.preferredMeetingPlatform })
+      .from(interviewers)
+      .where(eq(interviewers.id, session.interviewerId))
+      .limit(1);
+
+    let meetingLink = "";
+    try {
+      const result = await meetingService.generateMeeting(
+        (interviewer?.preferredMeetingPlatform as "zoom" | "teams") || "zoom",
+        {
+          topic: `Interview Session - ${session.sessionType}`,
+          startTime: session.scheduledDate,
+          durationMinutes: session.duration,
+        }
+      );
+      meetingLink = result.joinUrl;
+    } catch (error) {
+      console.error("Failed to generate meeting link during status update", error);
+      meetingLink = "PENDING_GENERATION";
+    }
+    updateData.meetingLink = meetingLink;
+  }
 
   if (status === "cancelled") {
     updateData.cancellationReason = reason;

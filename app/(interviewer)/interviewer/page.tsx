@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { interviewerApi } from "@/lib/api";
+import { interviewerApi, sessionApi } from "@/lib/api";
 import Link from "next/link";
 import {
   DollarSign,
@@ -97,33 +97,124 @@ export default function InterviewerDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   // Make sessions stateful so the user can paste and save links during the demo
-  const [sessions, setSessions] = useState(upcomingSessions);
+  const [sessions, setSessions] = useState<any[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [tempLink, setTempLink] = useState("");
 
-  const handleSaveLink = (id: number) => {
-    setSessions(prev => 
-      prev.map(s => s.id === id ? { ...s, meetingLink: tempLink } : s)
-    );
-    setEditingSessionId(null);
-    setTempLink("");
+  const handleSaveLink = async (id: number) => {
+    try {
+      const res = await sessionApi.updateMeetingLink(id, tempLink);
+      if (res.success) {
+        setSessions(prev => 
+          prev.map(s => s.id === id ? { ...s, meetingLink: tempLink } : s)
+        );
+      } else {
+        alert(res.error?.message || "Failed to save meeting link");
+      }
+    } catch (error) {
+      console.error("Error saving meeting link:", error);
+      alert("An unexpected error occurred.");
+    } finally {
+      setEditingSessionId(null);
+      setTempLink("");
+    }
+  };
+
+  const handleAcceptSession = async (id: number) => {
+    try {
+      const res = await sessionApi.updateStatus(id, "scheduled");
+      if (res.success) {
+        await fetchDashboardData();
+        alert("Session accepted successfully!");
+      } else {
+        alert(res.error?.message || "Failed to accept session");
+      }
+    } catch (error) {
+      console.error("Error accepting session:", error);
+      alert("An unexpected error occurred.");
+    }
+  };
+
+  const handleDeclineSession = async (id: number) => {
+    const reason = prompt("Please enter a reason for declining this request (optional):");
+    if (reason === null) return;
+    
+    try {
+      const res = await sessionApi.updateStatus(id, "cancelled", reason || undefined);
+      if (res.success) {
+        await fetchDashboardData();
+        alert("Session declined.");
+      } else {
+        alert(res.error?.message || "Failed to decline session");
+      }
+    } catch (error) {
+      console.error("Error declining session:", error);
+      alert("An unexpected error occurred.");
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    if (!user) return;
+    try {
+      const [profileRes, sessionsRes] = await Promise.all([
+        interviewerApi.getProfile(),
+        sessionApi.getAll(),
+      ]);
+
+      if (profileRes.success && profileRes.data?.profile) {
+        setProfile(profileRes.data.profile);
+      }
+
+      if (sessionsRes.success && sessionsRes.data?.sessions) {
+        const sessionTypeLabels: Record<string, string> = {
+          behavioral: "Behavioral Interview",
+          technical: "Technical Interview",
+          case_study: "Case Study",
+          mixed: "Mixed Interview",
+        };
+
+        const backendSessions = sessionsRes.data.sessions.map((s: any) => {
+          const name = `${s.jobSeeker?.firstName || "Candidate"} ${s.jobSeeker?.lastName || ""}`;
+          const initials = `${s.jobSeeker?.firstName?.[0] || "C"}${s.jobSeeker?.lastName?.[0] || ""}`;
+          
+          return {
+            id: s.id,
+            candidateName: name,
+            avatar: initials,
+            avatarBg: "bg-teal-100",
+            avatarColor: "text-teal-600",
+            date: new Date(s.scheduledDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            time: new Date(s.scheduledDate).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            duration: `${s.duration} min`,
+            price: parseFloat(s.priceAmount || "0"),
+            earnings: parseFloat(s.priceAmount || "0"),
+            status: s.sessionStatus,
+            tags: [sessionTypeLabels[s.sessionType] || s.sessionType],
+            meetingLink: s.meetingLink || "",
+            notes: s.notes || "",
+            rating: s.rating || 5,
+            feedback: s.feedback || "Great session, no detailed written review left.",
+          };
+        });
+
+        setSessions(backendSessions);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return;
-      try {
-        const response = await interviewerApi.getProfile();
-        if (response.success && response.data) {
-          setProfile(response.data.profile);
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchProfile();
+    fetchDashboardData();
   }, [user]);
 
   const userName = user?.firstName || "";
@@ -136,6 +227,15 @@ export default function InterviewerDashboardPage() {
       </div>
     );
   }
+
+  const upcomingList = sessions.filter(
+    (s) =>
+      s.status === "pending" ||
+      s.status === "scheduled" ||
+      s.status === "rescheduled" ||
+      s.status === "in_progress"
+  );
+  const completedList = sessions.filter((s) => s.status === "completed");
 
   return (
     <div className="w-full">
@@ -273,124 +373,159 @@ export default function InterviewerDashboardPage() {
             </div>
 
             <div className="divide-y divide-gray-100">
-              {sessions.map((session) => (
-                <div key={session.id} className="p-6">
-                  <div className="flex items-start gap-4">
-                    {/* Avatar */}
-                    <div
-                      className={`w-12 h-12 ${session.avatarBg} rounded-full flex items-center justify-center shrink-0`}
-                    >
-                      <span className={`font-semibold ${session.avatarColor}`}>
-                        {session.avatar}
-                      </span>
-                    </div>
+              {upcomingList.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  No upcoming sessions or pending requests.
+                </div>
+              ) : (
+                upcomingList.map((session) => (
+                  <div key={session.id} className="p-6">
+                    <div className="flex items-start gap-4">
+                      {/* Avatar */}
+                      <div
+                        className={`w-12 h-12 ${session.avatarBg} rounded-full flex items-center justify-center shrink-0`}
+                      >
+                        <span className={`font-semibold ${session.avatarColor}`}>
+                          {session.avatar}
+                        </span>
+                      </div>
 
-                    {/* Details */}
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-semibold text-gray-900">
-                            {session.candidateName}
-                          </h3>
-                          <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-                            <span className="flex items-center gap-1">
-                              <Calendar size={14} />
-                              {session.date}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock size={14} />
-                              {session.time}
+                      {/* Details */}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">
+                              {session.candidateName}
+                            </h3>
+                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                              <span className="flex items-center gap-1">
+                                <Calendar size={14} />
+                                {session.date}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock size={14} />
+                                {session.time}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-teal-600">
+                              LKR {session.price.toLocaleString()}
+                            </p>
+                            <span
+                              className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full mt-1 ${
+                                session.status === "scheduled" || session.status === "rescheduled"
+                                  ? "bg-green-50 text-green-600"
+                                  : session.status === "pending"
+                                  ? "bg-yellow-50 text-yellow-600"
+                                  : "bg-orange-50 text-orange-600"
+                              }`}
+                            >
+                              {session.status === "scheduled" || session.status === "rescheduled" ? (
+                                <CheckCircle size={12} />
+                              ) : (
+                                <AlertCircle size={12} />
+                              )}
+                              {session.status === "scheduled" || session.status === "rescheduled"
+                                ? "Confirmed"
+                                : session.status === "pending"
+                                ? "Awaiting Confirmation"
+                                : session.status}
                             </span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold text-teal-600">
-                            LKR {session.price.toLocaleString()}
-                          </p>
-                          <span
-                            className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full mt-1 ${
-                              session.status === "confirmed"
-                                ? "bg-green-50 text-green-600"
-                                : "bg-orange-50 text-orange-600"
-                            }`}
-                          >
-                            {session.status === "confirmed" ? (
-                              <CheckCircle size={12} />
-                            ) : (
-                              <AlertCircle size={12} />
-                            )}
-                            {session.status === "confirmed" ? "Confirmed" : "Pending"}
-                          </span>
-                        </div>
-                      </div>
 
-                      {/* Tags */}
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {session.tags.map((tag, i) => (
-                          <span
-                            key={i}
-                            className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        {session.meetingLink ? (
-                          <a 
-                            href={session.meetingLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-                          >
-                            <Video size={16} />
-                            Join Session
-                          </a>
-                        ) : editingSessionId === session.id ? (
-                          <div className="flex items-center gap-2">
-                            <input 
-                              type="url"
-                              placeholder="Paste meet link here..."
-                              value={tempLink}
-                              onChange={(e) => setTempLink(e.target.value)}
-                              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                              autoFocus
-                            />
-                            <button 
-                              onClick={() => handleSaveLink(session.id)}
-                              className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
-                            >
-                              Save
-                            </button>
-                            <button 
-                              onClick={() => { setEditingSessionId(null); setTempLink(""); }}
-                              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium"
-                            >
-                              Cancel
-                            </button>
+                        {/* Notes */}
+                        {session.notes && (
+                          <div className="bg-yellow-50 rounded-lg p-3 mb-3 text-sm text-yellow-800">
+                            <strong>Candidate Note:</strong> {session.notes}
                           </div>
-                        ) : (
-                          <button 
-                            onClick={() => { setEditingSessionId(session.id); setTempLink(""); }}
-                            className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
-                          >
-                            <Video size={16} />
-                            + Add Meet Link
-                          </button>
                         )}
-                        <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
-                          Contact
-                        </button>
-                        <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
-                          Reschedule
-                        </button>
+
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {session.tags.map((tag: any, i: number) => (
+                            <span
+                              key={i}
+                              className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          {session.status === "pending" ? (
+                            <>
+                              <button
+                                onClick={() => handleAcceptSession(session.id)}
+                                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                              >
+                                Accept Request
+                              </button>
+                              <button
+                                onClick={() => handleDeclineSession(session.id)}
+                                className="border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium"
+                              >
+                                Decline
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {session.meetingLink ? (
+                                <a 
+                                  href={session.meetingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                                >
+                                  <Video size={16} />
+                                  Join Session
+                                </a>
+                              ) : editingSessionId === session.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="url"
+                                    placeholder="Paste meet link here..."
+                                    value={tempLink}
+                                    onChange={(e) => setTempLink(e.target.value)}
+                                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    autoFocus
+                                  />
+                                  <button 
+                                    onClick={() => handleSaveLink(session.id)}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+                                  >
+                                    Save
+                                  </button>
+                                  <button 
+                                    onClick={() => { setEditingSessionId(null); setTempLink(""); }}
+                                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button 
+                                  onClick={() => { setEditingSessionId(session.id); setTempLink(""); }}
+                                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
+                                >
+                                  <Video size={16} />
+                                  + Add Meet Link
+                                </button>
+                              )}
+                            </>
+                          )}
+                          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
+                            Contact
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -404,47 +539,53 @@ export default function InterviewerDashboardPage() {
             </div>
 
             <div className="divide-y divide-gray-100">
-              {recentSessions.map((session) => (
-                <div key={session.id} className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
-                        {session.candidateName}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {session.date} • {session.duration}
-                      </p>
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="text-yellow-400">🏆</span>
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            size={14}
-                            className={
-                              i < session.rating
-                                ? "text-yellow-400 fill-yellow-400"
-                                : "text-gray-300"
-                            }
-                          />
-                        ))}
-                        <span className="text-sm text-gray-500 ml-1">
-                          ({session.rating}/5)
+              {completedList.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  No recent completed sessions.
+                </div>
+              ) : (
+                completedList.map((session) => (
+                  <div key={session.id} className="p-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {session.candidateName}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {session.date} • {session.duration}
+                        </p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-yellow-400">🏆</span>
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              size={14}
+                              className={
+                                i < session.rating
+                                  ? "text-yellow-400 fill-yellow-400"
+                                  : "text-gray-300"
+                              }
+                            />
+                          ))}
+                          <span className="text-sm text-gray-500 ml-1">
+                            ({session.rating}/5)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-teal-600">
+                          +LKR {session.earnings.toLocaleString()}
+                        </p>
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full mt-1">
+                          <CheckCircle size={12} />
+                          Completed
                         </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-teal-600">
-                        +LKR {session.earnings.toLocaleString()}
-                      </p>
-                      <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full mt-1">
-                        <CheckCircle size={12} />
-                        Completed
-                      </span>
-                    </div>
+                    <p className="text-sm text-gray-600 italic">"{session.feedback}"</p>
                   </div>
-                  <p className="text-sm text-gray-600 italic">"{session.feedback}"</p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

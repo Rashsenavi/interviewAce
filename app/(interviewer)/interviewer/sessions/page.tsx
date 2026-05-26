@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { sessionApi } from "@/lib/api";
 import {
   Calendar,
   Clock,
@@ -42,108 +43,11 @@ interface Session {
   feedback?: string;
 }
 
-// Mock session data for interviewer
-const sessionsData: Session[] = [
-  {
-    id: "INT-20260212001",
-    candidateName: "Amaya Silva",
-    candidateAvatar: "AS",
-    candidateAvatarBg: "bg-purple-500",
-    candidateEmail: "amaya.silva@email.com",
-    candidatePhone: "+94 77 123 4567",
-    candidateUniversity: "University of Colombo",
-    date: "2026-02-12",
-    time: "10:00",
-    duration: "60 min",
-    sessionType: "Mock Interview",
-    status: "upcoming",
-    earnings: 4250,
-    meetingLink: "https://meet.google.com/abc-defg-hij",
-    notes: "Focus on system design and coding questions",
-  },
-  {
-    id: "INT-20260213001",
-    candidateName: "Ravindu Fernando",
-    candidateAvatar: "RF",
-    candidateAvatarBg: "bg-orange-500",
-    candidateEmail: "ravindu.f@email.com",
-    candidatePhone: "+94 76 987 6543",
-    candidateUniversity: "University of Moratuwa",
-    date: "2026-02-13",
-    time: "14:00",
-    duration: "60 min",
-    sessionType: "Career Coaching",
-    status: "pending",
-    earnings: 4250,
-    notes: "Resume review and interview tips",
-  },
-  {
-    id: "INT-20260215001",
-    candidateName: "Nisha Jayawardena",
-    candidateAvatar: "NJ",
-    candidateAvatarBg: "bg-teal-500",
-    candidateEmail: "nisha.j@email.com",
-    candidatePhone: "+94 71 555 4444",
-    candidateUniversity: "SLIIT",
-    date: "2026-02-15",
-    time: "16:00",
-    duration: "60 min",
-    sessionType: "Mock Interview",
-    status: "pending",
-    earnings: 4250,
-  },
-  {
-    id: "INT-20260208001",
-    candidateName: "Kasun Perera",
-    candidateAvatar: "KP",
-    candidateAvatarBg: "bg-blue-500",
-    candidateEmail: "kasun.p@email.com",
-    candidatePhone: "+94 77 111 2222",
-    candidateUniversity: "University of Kelaniya",
-    date: "2026-02-08",
-    time: "11:00",
-    duration: "60 min",
-    sessionType: "Mock Interview",
-    status: "completed",
-    earnings: 4250,
-    rating: 5,
-    feedback: "Very helpful session. Got detailed feedback on my technical skills.",
-  },
-  {
-    id: "INT-20260206001",
-    candidateName: "Sanduni Wickrama",
-    candidateAvatar: "SW",
-    candidateAvatarBg: "bg-pink-500",
-    candidateEmail: "sanduni.w@email.com",
-    candidatePhone: "+94 70 333 4444",
-    candidateUniversity: "University of Peradeniya",
-    date: "2026-02-06",
-    time: "09:00",
-    duration: "60 min",
-    sessionType: "Career Coaching",
-    status: "completed",
-    earnings: 4250,
-    rating: 4,
-    feedback: "Good advice on career planning. Would recommend!",
-  },
-  {
-    id: "INT-20260203001",
-    candidateName: "Thilina Rajapaksa",
-    candidateAvatar: "TR",
-    candidateAvatarBg: "bg-green-500",
-    candidateEmail: "thilina.r@email.com",
-    candidatePhone: "+94 72 666 7777",
-    candidateUniversity: "NSBM",
-    date: "2026-02-03",
-    time: "15:00",
-    duration: "60 min",
-    sessionType: "Mock Interview",
-    status: "cancelled",
-    earnings: 0,
-  },
-];
+// Mock session data for interviewer (Removed in favor of dynamic API data)
 
 export default function InterviewerSessionsPage() {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past" | "all">("upcoming");
   const [searchQuery, setSearchQuery] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -153,8 +57,73 @@ export default function InterviewerSessionsPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const fetchSessions = async () => {
+    try {
+      setLoading(true);
+      const res = await sessionApi.getAll();
+      if (res.success && res.data?.sessions) {
+        const sessionTypeLabels: Record<string, string> = {
+          behavioral: "Behavioral Interview",
+          technical: "Technical Interview",
+          case_study: "Case Study",
+          mixed: "Mixed Interview",
+        };
+
+        const mappedSessions = res.data.sessions.map((s: any) => {
+          const candidateName = `${s.jobSeeker?.firstName || "Candidate"} ${s.jobSeeker?.lastName || ""}`;
+          const initials = `${s.jobSeeker?.firstName?.[0] || "C"}${s.jobSeeker?.lastName?.[0] || ""}`;
+          
+          let status: SessionStatus = "upcoming";
+          if (s.sessionStatus === "pending") {
+            status = "pending";
+          } else if (s.sessionStatus === "completed") {
+            status = "completed";
+          } else if (s.sessionStatus === "cancelled" || s.sessionStatus === "no_show") {
+            status = "cancelled";
+          }
+
+          const scheduledDate = new Date(s.scheduledDate);
+
+          return {
+            id: s.id.toString(),
+            candidateName,
+            candidateAvatar: initials,
+            candidateAvatarBg: "bg-teal-500",
+            candidateEmail: s.jobSeeker?.user?.email || "candidate@email.com",
+            candidatePhone: s.jobSeeker?.user?.phoneNumber || "N/A",
+            candidateUniversity: s.jobSeeker?.university || "N/A",
+            date: s.scheduledDate.split("T")[0],
+            time: scheduledDate.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }),
+            duration: `${s.duration} min`,
+            sessionType: sessionTypeLabels[s.sessionType] || s.sessionType,
+            status,
+            earnings: parseFloat(s.priceAmount || "0"),
+            meetingLink: s.meetingLink || "",
+            notes: s.notes || "",
+            rating: s.rating,
+            feedback: s.feedback,
+          };
+        });
+
+        setSessions(mappedSessions);
+      }
+    } catch (error) {
+      console.error("Failed to load sessions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
   // Filter sessions
-  const filteredSessions = sessionsData.filter((session) => {
+  const filteredSessions = sessions.filter((session) => {
     const matchesSearch =
       session.candidateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       session.candidateUniversity.toLowerCase().includes(searchQuery.toLowerCase());
@@ -168,12 +137,12 @@ export default function InterviewerSessionsPage() {
   });
 
   // Stats
-  const upcomingCount = sessionsData.filter(
+  const upcomingCount = sessions.filter(
     (s) => s.status === "upcoming" || s.status === "pending"
   ).length;
-  const pendingCount = sessionsData.filter((s) => s.status === "pending").length;
-  const completedCount = sessionsData.filter((s) => s.status === "completed").length;
-  const totalEarnings = sessionsData
+  const pendingCount = sessions.filter((s) => s.status === "pending").length;
+  const completedCount = sessions.filter((s) => s.status === "completed").length;
+  const totalEarnings = sessions
     .filter((s) => s.status === "completed")
     .reduce((acc, s) => acc + s.earnings, 0);
 
@@ -188,8 +157,14 @@ export default function InterviewerSessionsPage() {
   };
 
   const formatTime = (timeStr: string) => {
-    const hour = parseInt(timeStr.split(":")[0]);
-    return hour < 12 ? `${hour}:00 AM` : hour === 12 ? "12:00 PM" : `${hour - 12}:00 PM`;
+    const parts = timeStr.split(":");
+    const hour = parseInt(parts[0]);
+    const minutes = parts[1] || "00";
+    return hour < 12 
+      ? `${hour === 0 ? 12 : hour}:${minutes} AM` 
+      : hour === 12 
+      ? `12:${minutes} PM` 
+      : `${hour - 12}:${minutes} PM`;
   };
 
   const getStatusBadge = (status: SessionStatus) => {
@@ -228,23 +203,58 @@ export default function InterviewerSessionsPage() {
   const handleConfirmSession = async () => {
     if (!selectedSession) return;
     setIsProcessing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    alert(`Session ${selectedSession.id} has been confirmed!`);
-    setShowConfirmModal(false);
-    setSelectedSession(null);
-    setIsProcessing(false);
+    try {
+      const res = await sessionApi.updateStatus(parseInt(selectedSession.id), "scheduled");
+      if (res.success) {
+        alert(`Session #${selectedSession.id} has been confirmed!`);
+        await fetchSessions();
+      } else {
+        alert(res.error?.message || "Failed to confirm session");
+      }
+    } catch (error) {
+      console.error("Error confirming session:", error);
+      alert("An unexpected error occurred.");
+    } finally {
+      setShowConfirmModal(false);
+      setSelectedSession(null);
+      setIsProcessing(false);
+    }
   };
 
   const handleRejectSession = async () => {
     if (!selectedSession) return;
     setIsProcessing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    alert(`Session ${selectedSession.id} has been rejected.`);
-    setShowRejectModal(false);
-    setSelectedSession(null);
-    setRejectReason("");
-    setIsProcessing(false);
+    try {
+      const res = await sessionApi.updateStatus(
+        parseInt(selectedSession.id),
+        "cancelled",
+        rejectReason || undefined
+      );
+      if (res.success) {
+        alert(`Session #${selectedSession.id} has been rejected.`);
+        await fetchSessions();
+      } else {
+        alert(res.error?.message || "Failed to reject session");
+      }
+    } catch (error) {
+      console.error("Error rejecting session:", error);
+      alert("An unexpected error occurred.");
+    } finally {
+      setShowRejectModal(false);
+      setSelectedSession(null);
+      setRejectReason("");
+      setIsProcessing(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-gray-500">Loading sessions...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">

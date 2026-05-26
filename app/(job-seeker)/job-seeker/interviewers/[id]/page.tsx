@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { interviewerApi } from "@/lib/api";
+import { interviewerApi, sessionApi } from "@/lib/api";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -208,13 +208,34 @@ export default function InterviewerProfilePage() {
     
     setIsBooking(true);
     
-    // Simulate booking process (actual booking API will be Phase 4)
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // Navigate to confirmation page
-    router.push(
-      `/job-seeker/booking-confirmation?interviewer=${encodeURIComponent(interviewer.firstName + " " + interviewer.lastName)}&date=${selectedDate}&time=${selectedTime}&type=${sessionType}&price=${interviewer.hourlyRate}`
-    );
+    try {
+      const scheduledDate = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+      const backendSessionType = sessionType === "coaching" ? "behavioral" : "technical";
+      
+      const response = await sessionApi.create({
+        interviewerUserId: parseInt(userId),
+        sessionType: backendSessionType,
+        scheduledDate: scheduledDate,
+        duration: 60,
+        priceAmount: interviewer.hourlyRate,
+        notes: notes || undefined,
+        recordingConsent: false,
+      });
+
+      if (response.success) {
+        // Navigate to confirmation page
+        router.push(
+          `/job-seeker/booking-confirmation?interviewer=${encodeURIComponent(interviewer.firstName + " " + interviewer.lastName)}&date=${selectedDate}&time=${selectedTime}&type=${sessionType}&price=${interviewer.hourlyRate}`
+        );
+      } else {
+        alert(response.error?.message || "Failed to book session");
+      }
+    } catch (err) {
+      console.error("Booking error:", err);
+      alert("An unexpected error occurred while booking.");
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   if (loading) {

@@ -24,6 +24,7 @@ export const verificationStatusEnum = pgEnum("verification_status", [
   "rejected",
 ]);
 export const sessionStatusEnum = pgEnum("session_status", [
+  "pending",
   "scheduled",
   "rescheduled",
   "in_progress",
@@ -207,7 +208,7 @@ export const interviewSessions = pgTable("interview_sessions", {
   scheduledDate: timestamp("scheduled_date").notNull(),
   duration: integer("duration").notNull(),
   meetingLink: varchar("meeting_link", { length: 500 }),
-  sessionStatus: sessionStatusEnum("session_status").default("scheduled"),
+  sessionStatus: sessionStatusEnum("session_status").default("pending"),
   priceAmount: decimal("price_amount", { precision: 12, scale: 2 }).notNull(),
   recordingUrl: varchar("recording_url", { length: 500 }),
   recordingConsent: boolean("recording_consent").default(false),
