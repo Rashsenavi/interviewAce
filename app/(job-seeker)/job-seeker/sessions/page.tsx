@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { sessionApi } from "@/lib/api";
 
-type SessionStatus = "scheduled" | "rescheduled" | "in_progress" | "completed" | "cancelled" | "no_show";
+type SessionStatus = "pending" | "scheduled" | "rescheduled" | "in_progress" | "completed" | "cancelled" | "no_show";
 
 interface Session {
   id: number;
@@ -29,6 +29,7 @@ interface Session {
   priceAmount: number;
   cancellationReason?: string;
   notes?: string;
+  rescheduleCount?: number;
   createdAt: string;
   interviewer: {
     id: number;
@@ -56,7 +57,7 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   mixed: "Mixed Interview",
 };
 
-const STATUS_UPCOMING: SessionStatus[] = ["scheduled", "rescheduled", "in_progress"];
+const STATUS_UPCOMING: SessionStatus[] = ["pending", "scheduled", "rescheduled", "in_progress"];
 const STATUS_PAST: SessionStatus[] = ["completed", "cancelled", "no_show"];
 
 export default function MySessionsPage() {
@@ -71,6 +72,12 @@ export default function MySessionsPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
+
+  // Reschedule state
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+  const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
 
   const loadSessions = async () => {
     setLoading(true);
@@ -135,8 +142,22 @@ export default function MySessionsPage() {
       minute: "2-digit",
     });
 
+  const isWithin24Hours = (dateStr: string) => {
+    const scheduled = new Date(dateStr);
+    const now = new Date();
+    const diffHours = (scheduled.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return diffHours < 24 && diffHours > 0;
+  };
+
   const getStatusBadge = (status: SessionStatus) => {
     switch (status) {
+      case "pending":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium">
+            <AlertCircle className="w-3 h-3" />
+            Awaiting Confirmation
+          </span>
+        );
       case "scheduled":
       case "rescheduled":
         return (
@@ -200,6 +221,37 @@ export default function MySessionsPage() {
         }, 1500);
       } else {
         alert(res.error?.message || "Failed to cancel session");
+      }
+    } catch {
+      alert("An error occurred. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!selectedSession || !newDate || !newTime) return;
+    setIsProcessing(true);
+    try {
+      const newScheduledDate = new Date(`${newDate}T${newTime}`).toISOString();
+      const res = await sessionApi.reschedule(selectedSession.id, newScheduledDate);
+      
+      if (res.success) {
+        setRescheduleSuccess(true);
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === selectedSession.id ? { ...s, sessionStatus: "rescheduled", scheduledDate: newScheduledDate, rescheduleCount: (s.rescheduleCount || 0) + 1 } : s
+          )
+        );
+        setTimeout(() => {
+          setShowRescheduleModal(false);
+          setSelectedSession(null);
+          setNewDate("");
+          setNewTime("");
+          setRescheduleSuccess(false);
+        }, 1500);
+      } else {
+        alert(res.error?.message || "Failed to reschedule session");
       }
     } catch {
       alert("An error occurred. Please try again.");
@@ -404,12 +456,28 @@ export default function MySessionsPage() {
                                 Join Meeting
                               </a>
                             )}
+                            
+                            {(session.rescheduleCount || 0) < 3 && !isWithin24Hours(session.scheduledDate) && session.sessionStatus !== "pending" && (
+                              <button
+                                onClick={() => {
+                                  setSelectedSession(session);
+                                  setShowRescheduleModal(true);
+                                }}
+                                className="flex items-center gap-2 border border-blue-200 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                                Reschedule
+                              </button>
+                            )}
+                            
                             <button
                               onClick={() => {
                                 setSelectedSession(session);
                                 setShowCancelModal(true);
                               }}
-                              className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium"
+                              disabled={isWithin24Hours(session.scheduledDate) && session.sessionStatus !== "pending"}
+                              className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={isWithin24Hours(session.scheduledDate) && session.sessionStatus !== "pending" ? "Cannot cancel within 24 hours" : ""}
                             >
                               <XCircle className="w-4 h-4" />
                               Cancel
@@ -522,10 +590,10 @@ export default function MySessionsPage() {
                     />
                   </div>
 
-                  <p className="text-xs text-gray-500">
-                    Note: Cancellations within 24 hours may be subject to a cancellation fee.
-                  </p>
-                </div>
+                    <p className="text-xs text-gray-500">
+                      Note: Cancellations within 24 hours of the session are strictly prohibited.
+                    </p>
+                  </div>
 
                 <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
                   <button
@@ -550,6 +618,100 @@ export default function MySessionsPage() {
                       </>
                     ) : (
                       "Cancel Session"
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Modal */}
+      {showRescheduleModal && selectedSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Reschedule Session</h2>
+              <button
+                onClick={() => {
+                  setShowRescheduleModal(false);
+                  setSelectedSession(null);
+                  setNewDate("");
+                  setNewTime("");
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {rescheduleSuccess ? (
+              <div className="p-8 text-center">
+                <CheckCircle className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+                <p className="text-gray-900 font-semibold">Session Rescheduled</p>
+                <p className="text-gray-500 text-sm mt-1">Your session time has been updated.</p>
+              </div>
+            ) : (
+              <>
+                <div className="p-6 space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-blue-800 text-sm mb-2">
+                      <strong>Current Time:</strong> {formatDate(selectedSession.scheduledDate)} at {formatTime(selectedSession.scheduledDate)}
+                    </p>
+                    <p className="text-blue-800 text-xs italic">
+                      You have used {selectedSession.rescheduleCount || 0} out of 3 allowed reschedules.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New Date</label>
+                    <input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min={new Date(new Date().getTime() + 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New Time</label>
+                    <input
+                      type="time"
+                      value={newTime}
+                      onChange={(e) => setNewTime(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <p className="text-xs text-gray-500 mt-2">
+                    Note: Reschedules must be done at least 24 hours in advance and are limited to 3 times per session.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                  <button
+                    onClick={() => {
+                      setShowRescheduleModal(false);
+                      setSelectedSession(null);
+                    }}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReschedule}
+                    disabled={isProcessing || !newDate || !newTime}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      "Confirm New Time"
                     )}
                   </button>
                 </div>

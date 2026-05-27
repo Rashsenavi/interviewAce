@@ -417,19 +417,19 @@ export default function BrowseInterviewersPage() {
                   {interviewer.bio || "Verified IT professional available for focused mock interview sessions."}
                 </p>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-100">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    {interviewer.yearsExperience} yrs exp.
-                  </span>
-                  <span>{interviewer.totalInterviews} sessions</span>
-                </div>
-
-                {/* Hover CTA */}
-                <div className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium">
+                {/* Footer & CTA */}
+                <div className="mt-auto pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {interviewer.yearsExperience} yrs exp.
+                    </span>
+                    <span>{interviewer.totalInterviews} sessions</span>
+                  </div>
+                  
+                  <button className="w-full bg-blue-50 group-hover:bg-blue-600 text-blue-700 group-hover:text-white py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2">
                     View Profile & Book
+                    <span className="transform translate-x-0 group-hover:translate-x-1 transition-transform">→</span>
                   </button>
                 </div>
               </Link>

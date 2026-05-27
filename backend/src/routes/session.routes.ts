@@ -41,4 +41,10 @@ router.put("/:id/status", authenticate, asyncHandler(sessionController.updateSes
  */
 router.put("/:id/meeting-link", authenticate, asyncHandler(sessionController.updateMeetingLink));
 
+/**
+ * POST /api/sessions/:id/reschedule
+ * Reschedule a session
+ */
+router.post("/:id/reschedule", authenticate, asyncHandler(sessionController.rescheduleSession));
+
 export default router;

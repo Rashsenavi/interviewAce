@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.20.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
@@ -24,8 +26,9 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
+    "node-cron": "^4.2.1",
     "nodemailer": "^8.0.3",
-    "pg": "^8.20.0",
+    "pg": "^8.21.0",
     "postgres": "^3.4.3",
     "zod": "^3.22.4"
   },

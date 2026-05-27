@@ -254,7 +254,6 @@ export const sessionApi = {
     sessionType: "behavioral" | "technical" | "case_study" | "mixed";
     scheduledDate: string;
     duration: number;
-    priceAmount: number;
     notes?: string;
     recordingConsent?: boolean;
   }) => {
@@ -283,6 +282,10 @@ export const sessionApi = {
 
   updateMeetingLink: async (id: number, meetingLink: string) => {
     return apiClient.put<{ session: any }>(`/sessions/${id}/meeting-link`, { meetingLink });
+  },
+
+  reschedule: async (id: number, newScheduledDate: string) => {
+    return apiClient.post<{ session: any }>(`/sessions/${id}/reschedule`, { newScheduledDate });
   },
 };
 

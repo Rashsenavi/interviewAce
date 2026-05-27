@@ -7,6 +7,7 @@ import {
   users,
   payments,
   feedback,
+  rescheduleRequests,
 } from "../db/schema";
 
 export interface CreateSessionInput {
@@ -21,6 +22,8 @@ export interface CreateSessionInput {
 }
 
 import { meetingService } from "./meetings/MeetingService";
+import { cancelSessionPayment } from "./payment.service";
+import { notifySessionStateChange } from "../utils/notification.utils";
 
 /**
  * Create a new interview session
@@ -309,8 +312,27 @@ export const updateSessionStatus = async (
   }
 
   if (status === "cancelled") {
+    const scheduledDate = new Date(session.scheduledDate);
+    const now = new Date();
+    const diffHours = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    if (diffHours < 24 && session.sessionStatus !== "pending") {
+      const error = new Error("Cannot cancel a session within 24 hours of the scheduled time") as Error & { status?: number; code?: string };
+      error.status = 400;
+      error.code = "CANCELLATION_TOO_LATE";
+      throw error;
+    }
+
     updateData.cancellationReason = reason;
     updateData.cancelledBy = userId;
+    
+    // Trigger refund process automatically
+    try {
+      await cancelSessionPayment(sessionId, userId);
+    } catch (paymentError) {
+      console.error(`Failed to refund payment for session ${sessionId}:`, paymentError);
+      // We don't fail the cancellation if refund fails, but it's logged.
+    }
   }
 
   const [updated] = await db
@@ -318,6 +340,20 @@ export const updateSessionStatus = async (
     .set(updateData)
     .where(eq(interviewSessions.id, sessionId))
     .returning();
+
+  // Send notifications
+  if (status === "scheduled") {
+    await notifySessionStateChange(sessionId, "session_confirmed");
+  } else if (status === "cancelled") {
+    if (session.sessionStatus === "pending") {
+      // Differentiate between JS cancelling vs Interviewer rejecting
+      if (userId === session.jobSeekerId) {
+        await notifySessionStateChange(sessionId, "session_cancelled_by_jobseeker");
+      } else {
+        await notifySessionStateChange(sessionId, "session_rejected");
+      }
+    }
+  }
 
   return updated;
 };
@@ -406,6 +442,65 @@ export const getSessionStats = async (userId: number, userType: string) => {
   };
 };
 
+export const rescheduleSession = async (
+  sessionId: number,
+  userId: number,
+  newScheduledDate: string
+) => {
+  const session = await getSessionById(sessionId, userId);
+
+  if (!session) {
+    const error = new Error("Session not found") as Error & { status?: number; code?: string };
+    error.status = 404;
+    error.code = "SESSION_NOT_FOUND";
+    throw error;
+  }
+
+  const scheduledDate = new Date(session.scheduledDate);
+  const now = new Date();
+  const diffHours = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  if (diffHours < 24) {
+    const error = new Error("Cannot reschedule a session within 24 hours of the scheduled time") as Error & { status?: number; code?: string };
+    error.status = 400;
+    error.code = "RESCHEDULE_TOO_LATE";
+    throw error;
+  }
+
+  if ((session.rescheduleCount || 0) >= 3) {
+    const error = new Error("Maximum number of reschedules (3) has been reached") as Error & { status?: number; code?: string };
+    error.status = 400;
+    error.code = "MAX_RESCHEDULES_REACHED";
+    throw error;
+  }
+
+  return await db.transaction(async (tx) => {
+    // Log the request
+    await tx.insert(rescheduleRequests).values({
+      sessionId,
+      requestedByUserId: userId,
+      originalDate: new Date(session.scheduledDate),
+      proposedDate: new Date(newScheduledDate),
+      status: "approved", // auto-approve for simplicity to fulfill the 3-limit feature directly
+      reason: "User requested reschedule",
+      createdAt: new Date(),
+    });
+
+    // Update the session
+    const [updatedSession] = await tx
+      .update(interviewSessions)
+      .set({
+        scheduledDate: new Date(newScheduledDate),
+        rescheduleCount: (session.rescheduleCount || 0) + 1,
+        sessionStatus: "rescheduled",
+        updatedAt: new Date(),
+      })
+      .where(eq(interviewSessions.id, sessionId))
+      .returning();
+
+    return updatedSession;
+  });
+};
 export default {
   createSession,
   getJobSeekerSessions,
@@ -414,4 +509,5 @@ export default {
   updateSessionStatus,
   updateMeetingLink,
   getSessionStats,
+  rescheduleSession,
 };

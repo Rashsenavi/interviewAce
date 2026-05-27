@@ -18,6 +18,10 @@ const updateStatusSchema = z.object({
   reason: z.string().optional(),
 });
 
+const rescheduleSchema = z.object({
+  newScheduledDate: z.string().transform((str) => new Date(str)),
+});
+
 const updateMeetingLinkSchema = z.object({
   meetingLink: z.string().url(),
 });
@@ -261,6 +265,59 @@ export const getSessionStats = async (req: Request, res: Response) => {
   });
 };
 
+export const rescheduleSession = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: { code: "NOT_AUTHENTICATED", message: "User not authenticated" },
+    });
+  }
+
+  const sessionId = parseInt(req.params.id);
+
+  if (isNaN(sessionId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: "INVALID_ID", message: "Invalid session ID" },
+    });
+  }
+
+  try {
+    const { newScheduledDate } = rescheduleSchema.parse(req.body);
+
+    const session = await sessionService.rescheduleSession(
+      sessionId,
+      req.user.id,
+      newScheduledDate.toISOString()
+    );
+
+    res.json({
+      success: true,
+      data: { session },
+      message: "Session rescheduled successfully",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid input data",
+          details: error.errors,
+        },
+      });
+    }
+    const e = error as Error & { status?: number; code?: string };
+    if (e.status) {
+      return res.status(e.status).json({
+        success: false,
+        error: { code: e.code, message: e.message },
+      });
+    }
+    throw error;
+  }
+};
+
 export default {
   createSession,
   getSessions,
@@ -268,4 +325,5 @@ export default {
   updateSessionStatus,
   updateMeetingLink,
   getSessionStats,
+  rescheduleSession,
 };

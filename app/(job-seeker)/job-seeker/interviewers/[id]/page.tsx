@@ -110,17 +110,13 @@ export default function InterviewerProfilePage() {
     const date = new Date(dateString);
     const dayName = date.toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
     
-    // 1. Check for date-specific slots first (Overrides)
     const specificSlots = availability.filter(s => {
       if (!s.specificDate) return false;
       const sDate = new Date(s.specificDate).toISOString().split('T')[0];
       return sDate === dateString;
     });
 
-    // 2. If no specific slots, use recurring slots for that day
-    const slotsToUse = specificSlots.length > 0 
-      ? specificSlots 
-      : availability.filter(s => s.isRecurring && s.dayOfWeek === dayName);
+    const slotsToUse = specificSlots;
     
     const slots: any[] = [];
     slotsToUse.forEach(slot => {

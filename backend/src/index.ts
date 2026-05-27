@@ -23,6 +23,8 @@ import questionsRoutes from "./routes/questions.routes";
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
 
+import { initCronJobs } from "./cron";
+
 const app: Express = express();
 const PORT = process.env.PORT || 3001;
 
@@ -92,6 +94,9 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Frontend URL: ${process.env.FRONTEND_URL}`);
+  
+  // Initialize cron jobs
+  initCronJobs();
 });
 
 // Graceful shutdown to prevent zombie database connections during hot-reloading

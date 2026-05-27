@@ -221,6 +221,7 @@ export const interviewSessions = pgTable("interview_sessions", {
   notes: text("notes"),
   cancellationReason: text("cancellation_reason"),
   cancelledBy: integer("cancelled_by").references(() => users.id),
+  rescheduleCount: integer("reschedule_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

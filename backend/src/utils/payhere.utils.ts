@@ -66,10 +66,19 @@ export function generateOrderId(sessionId: number): string {
  */
 export function calculateRefundAmount(
   sessionDate: Date,
-  totalAmount: number
+  totalAmount: number,
+  sessionStatus: string = "scheduled"
 ): { refundAmount: number; refundPercentage: number; reason: string } {
   const now = new Date();
   const hoursUntilSession = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  if (sessionStatus === "pending") {
+    return {
+      refundAmount: totalAmount,
+      refundPercentage: 100,
+      reason: "Full refund — cancelled while awaiting interviewer confirmation.",
+    };
+  }
 
   if (hoursUntilSession >= 24) {
     return {

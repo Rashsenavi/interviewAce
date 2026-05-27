@@ -41,6 +41,8 @@ interface Session {
   notes?: string;
   rating?: number;
   feedback?: string;
+  rescheduleCount?: number;
+  originalScheduledDate?: string;
 }
 
 // Mock session data for interviewer (Removed in favor of dynamic API data)
@@ -56,6 +58,20 @@ export default function InterviewerSessionsPage() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Additional state for Cancel and Reschedule
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [newDate, setNewDate] = useState("");
+  const [newTime, setNewTime] = useState("");
+
+  const isWithin24Hours = (dateStr: string) => {
+    const scheduled = new Date(dateStr);
+    const now = new Date();
+    const diffHours = (scheduled.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return diffHours < 24 && diffHours > 0;
+  };
 
   const fetchSessions = async () => {
     try {
@@ -106,6 +122,8 @@ export default function InterviewerSessionsPage() {
             notes: s.notes || "",
             rating: s.rating,
             feedback: s.feedback,
+            rescheduleCount: s.rescheduleCount || 0,
+            originalScheduledDate: s.scheduledDate,
           };
         });
 
@@ -243,6 +261,56 @@ export default function InterviewerSessionsPage() {
       setShowRejectModal(false);
       setSelectedSession(null);
       setRejectReason("");
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancelSession = async () => {
+    if (!selectedSession) return;
+    setIsProcessing(true);
+    try {
+      const res = await sessionApi.updateStatus(
+        parseInt(selectedSession.id),
+        "cancelled",
+        cancelReason || undefined
+      );
+      if (res.success) {
+        alert(`Session #${selectedSession.id} has been cancelled.`);
+        await fetchSessions();
+      } else {
+        alert(res.error?.message || "Failed to cancel session");
+      }
+    } catch (error) {
+      console.error("Error cancelling session:", error);
+      alert("An unexpected error occurred.");
+    } finally {
+      setShowCancelModal(false);
+      setSelectedSession(null);
+      setCancelReason("");
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!selectedSession || !newDate || !newTime) return;
+    setIsProcessing(true);
+    try {
+      const newScheduledDate = new Date(`${newDate}T${newTime}`).toISOString();
+      const res = await sessionApi.reschedule(parseInt(selectedSession.id), newScheduledDate);
+      
+      if (res.success) {
+        alert("Session rescheduled successfully!");
+        await fetchSessions();
+      } else {
+        alert(res.error?.message || "Failed to reschedule session");
+      }
+    } catch {
+      alert("An unexpected error occurred.");
+    } finally {
+      setShowRescheduleModal(false);
+      setSelectedSession(null);
+      setNewDate("");
+      setNewTime("");
       setIsProcessing(false);
     }
   };
@@ -504,6 +572,33 @@ export default function InterviewerSessionsPage() {
                             <Mail className="w-4 h-4" />
                             Email
                           </a>
+                          
+                          {/* Cancel / Reschedule for Interviewer */}
+                          {(session.rescheduleCount || 0) < 3 && !isWithin24Hours(session.originalScheduledDate || "") && (
+                            <button
+                              onClick={() => {
+                                setSelectedSession(session);
+                                setShowRescheduleModal(true);
+                              }}
+                              className="flex items-center gap-2 border border-teal-200 text-teal-600 hover:bg-teal-50 px-4 py-2 rounded-lg text-sm font-medium"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                              Reschedule
+                            </button>
+                          )}
+                          
+                          <button
+                            onClick={() => {
+                              setSelectedSession(session);
+                              setShowCancelModal(true);
+                            }}
+                            disabled={isWithin24Hours(session.originalScheduledDate || "")}
+                            className="flex items-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={isWithin24Hours(session.originalScheduledDate || "") ? "Cannot cancel within 24 hours" : ""}
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Cancel
+                          </button>
                         </>
                       )}
 
@@ -645,6 +740,163 @@ export default function InterviewerSessionsPage() {
                   </>
                 ) : (
                   "Reject Session"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Modal (for Upcoming Sessions) */}
+      {showCancelModal && selectedSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Cancel Confirmed Session</h2>
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setSelectedSession(null);
+                  setCancelReason("");
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p className="text-red-700 text-sm">
+                  Are you sure you want to cancel the confirmed session with{" "}
+                  <strong>{selectedSession.candidateName}</strong>?
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for cancellation
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Let the candidate know why you must cancel..."
+                  className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                  rows={3}
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                Note: Cancellations within 24 hours of the session are strictly prohibited.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setSelectedSession(null);
+                  setCancelReason("");
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900"
+              >
+                Keep Session
+              </button>
+              <button
+                onClick={handleCancelSession}
+                disabled={isProcessing}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  "Cancel Session"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Modal */}
+      {showRescheduleModal && selectedSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Reschedule Session</h2>
+              <button
+                onClick={() => {
+                  setShowRescheduleModal(false);
+                  setSelectedSession(null);
+                  setNewDate("");
+                  setNewTime("");
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                <p className="text-teal-800 text-sm mb-2">
+                  <strong>Current Time:</strong> {formatDate(selectedSession.originalScheduledDate || "")} at {formatTime(selectedSession.time)}
+                </p>
+                <p className="text-teal-800 text-xs italic">
+                  This session has been rescheduled {selectedSession.rescheduleCount || 0} out of 3 times.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Date</label>
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  min={new Date(new Date().getTime() + 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Time</label>
+                <input
+                  type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              
+              <p className="text-xs text-gray-500 mt-2">
+                Note: Reschedules must be done at least 24 hours in advance and are limited to 3 times per session.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+              <button
+                onClick={() => {
+                  setShowRescheduleModal(false);
+                  setSelectedSession(null);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReschedule}
+                disabled={isProcessing || !newDate || !newTime}
+                className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Confirm New Time"
                 )}
               </button>
             </div>

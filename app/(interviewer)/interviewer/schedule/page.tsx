@@ -131,20 +131,8 @@ export default function SchedulePage() {
           if (availRes.success && availRes.data?.slots) {
             const allSlots = availRes.data.slots;
             
-            // Map recurring slots
-            const newAvailability = DAYS.map(dayName => {
-              const dayLower = DAY_MAPPING[dayName];
-              const daySlots = allSlots
-                .filter((s: any) => s.isRecurring && s.dayOfWeek === dayLower)
-                .map((s: any) => ({
-                  id: s.id.toString(),
-                  startTime: s.startTime.substring(0, 5),
-                  endTime: s.endTime.substring(0, 5),
-                  enabled: true
-                }));
-              return { day: dayName, slots: daySlots };
-            });
-            setAvailability(newAvailability);
+            // The old recurring logic is removed. We only care about date-specific slots now.
+            setAvailability([]); // Keep empty to avoid breaking existing state typing just in case
 
             // Map date-specific slots
             const specificSlots: Record<string, TimeSlot[]> = {};
@@ -183,19 +171,7 @@ export default function SchedulePage() {
       // Prepare data for backend
       const slotsToSave: any[] = [];
       
-      // 1. Add Recurring Slots
-      availability.forEach(dayData => {
-        dayData.slots.forEach(slot => {
-          if (slot.enabled) {
-            slotsToSave.push({
-              dayOfWeek: DAY_MAPPING[dayData.day],
-              startTime: slot.startTime,
-              endTime: slot.endTime,
-              isRecurring: true
-            });
-          }
-        });
-      });
+      // 1. (Removed) Recurring slots are no longer saved as per user request.
 
       // 2. Add Date-Specific Slots
       Object.entries(dateSpecificAvailability).forEach(([dateKey, slots]) => {
@@ -414,80 +390,8 @@ export default function SchedulePage() {
       )}
 
       <div className="grid grid-cols-3 gap-6">
-        {/* Left Column - Weekly Availability */}
-        <div className="col-span-2 space-y-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Default Recurring Schedule</h2>
-              <p className="text-sm text-gray-500 mt-1">Define your standard availability that repeats every week</p>
-            </div>
-
-            <div className="space-y-6">
-              {availability.map((dayData, dayIndex) => (
-                <div key={dayData.day} className="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-gray-900">{dayData.day}</h3>
-                      <span className="text-xs text-gray-400 font-normal">({weekDates[dayIndex]})</span>
-                    </div>
-                    <button
-                      onClick={() => addSlot(dayIndex)}
-                      className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
-                    >
-                      <Plus size={16} />
-                      Add Slot
-                    </button>
-                  </div>
-
-                  {dayData.slots.length === 0 ? (
-                    <p className="text-sm text-gray-400 italic">No availability set</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {dayData.slots.map((slot) => (
-                        <div key={slot.id} className="flex items-center gap-3">
-                          {/* Toggle */}
-                          <button
-                            onClick={() => toggleSlot(dayIndex, slot.id)}
-                            className={`relative w-12 h-6 rounded-full transition-colors ${
-                              slot.enabled ? "bg-teal-600" : "bg-gray-300"
-                            }`}
-                          >
-                            <span
-                              className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                                slot.enabled ? "left-7" : "left-1"
-                              }`}
-                            />
-                          </button>
-
-                          {/* Start Time */}
-                          <TimeSelect
-                            value={slot.startTime}
-                            onChange={(val) => updateSlotTime(dayIndex, slot.id, "startTime", val)}
-                          />
-
-                          <span className="text-gray-400 text-xs font-medium">to</span>
-
-                          {/* End Time */}
-                          <TimeSelect
-                            value={slot.endTime}
-                            onChange={(val) => updateSlotTime(dayIndex, slot.id, "endTime", val)}
-                          />
-
-                          {/* Delete */}
-                          <button
-                            onClick={() => removeSlot(dayIndex, slot.id)}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Left Column - Booking Settings & Summary */}
+        <div className="space-y-6">
 
           {/* Booking Settings */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -579,12 +483,12 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
+        {/* Right Column - Weekly Calendar Editor */}
+        <div className="col-span-2 space-y-6">
           {/* Block Specific Dates */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="font-semibold text-gray-900 mb-1">Block Specific Dates</h3>
-            <p className="text-sm text-gray-500 mb-4">Mark dates when you're unavailable</p>
+            <h3 className="font-semibold text-gray-900 mb-1">Weekly Calendar</h3>
+            <p className="text-sm text-gray-500 mb-4">Click any date to add or manage your available slots</p>
 
             {/* Calendar */}
             <div className="border border-gray-200 rounded-lg p-4">
@@ -629,16 +533,25 @@ export default function SchedulePage() {
                   const day = i + 1;
                   const isSelected = selectedDate === day;
                   const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const dateToCheck = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                  const isPast = dateToCheck < today;
                   const isToday = day === today.getDate() && 
                                   currentMonth.getMonth() === today.getMonth() && 
                                   currentMonth.getFullYear() === today.getFullYear();
+
+                  const dateKey = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const hasSlots = (dateSpecificAvailability[dateKey] || []).some(s => s.enabled);
 
                   return (
                     <button
                       key={day}
                       onClick={() => setSelectedDate(day)}
-                      className={`p-2 text-sm rounded-lg transition-colors ${
-                        isSelected
+                      disabled={isPast}
+                      className={`relative p-2 text-sm rounded-lg transition-colors ${
+                        isPast
+                          ? "text-gray-300 cursor-not-allowed bg-gray-50"
+                          : isSelected
                           ? "bg-gray-900 text-white"
                           : isToday
                           ? "bg-gray-100 font-semibold"
@@ -646,15 +559,17 @@ export default function SchedulePage() {
                       }`}
                     >
                       {day}
+                      {hasSlots && !isSelected && !isPast && (
+                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-teal-500 rounded-full" />
+                      )}
+                      {hasSlots && isSelected && (
+                        <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />
+                      )}
                     </button>
                   );
                 })}
               </div>
             </div>
-
-            <button className="w-full mt-4 border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-lg text-sm font-medium">
-              Block Selected Date
-            </button>
           </div>
 
           {/* Date-Specific Availability */}
@@ -712,29 +627,6 @@ export default function SchedulePage() {
                 )}
               </div>
             )}
-          </div>
-
-          {/* Availability Summary */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="font-semibold text-gray-900 mb-4">Availability Summary</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Total Weekly Hours</span>
-                <span className="font-semibold text-gray-900">{totalHours} hours</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Available Slots/Week</span>
-                <span className="font-semibold text-gray-900">{totalSlots} slots</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Blocked Dates</span>
-                <span className="font-semibold text-gray-900">{blockedDates.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Current Bookings</span>
-                <span className="font-semibold text-green-600">8 sessions</span>
-              </div>
-            </div>
           </div>
 
           {/* Pro Tips */}
