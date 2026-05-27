@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "@/lib/context/AuthContext";
+import Script from "next/script";
 
 export const metadata = {
   title: "InterviewAce - Ace Your Next Interview",
@@ -15,6 +16,12 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <AuthProvider>{children}</AuthProvider>
+        <Script 
+          src={process.env.NEXT_PUBLIC_PAYHERE_SANDBOX === "true" 
+            ? "https://sandbox.payhere.lk/lib/payhere.js" 
+            : "https://www.payhere.lk/lib/payhere.js"} 
+          strategy="beforeInteractive" 
+        />
       </body>
     </html>
   );

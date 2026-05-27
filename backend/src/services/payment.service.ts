@@ -16,6 +16,7 @@ import {
   verifyWebhookHash,
   calculateRefundAmount,
 } from "../utils/payhere.utils";
+import { notifySessionStateChange } from "../utils/notification.utils";
 
 const MERCHANT_ID = process.env.PAYHERE_MERCHANT_ID || "";
 const MERCHANT_SECRET = process.env.PAYHERE_MERCHANT_SECRET || "";
@@ -125,7 +126,7 @@ export const initiatePayment = async (sessionId: number, userId: number) => {
       merchant_id: MERCHANT_ID,
       return_url: `${APP_URL}/job-seeker/booking-confirmation?order_id=${orderId}&session_id=${sessionId}`,
       cancel_url: `${APP_URL}/job-seeker/interviewers`,
-      notify_url: `${APP_URL}/api/payments/webhook`,
+      notify_url: process.env.PAYHERE_NOTIFY_URL || "http://localhost:3001/api/payments/webhook",
       order_id: orderId,
       items: `Mock Interview Session #${sessionId}`,
       currency,
@@ -207,10 +208,10 @@ export const processWebhook = async (body: Record<string, string>) => {
       })
       .where(eq(payments.id, payment.id));
 
-    // Update session to scheduled
+    // Update session updatedAt only (keep status as pending or whatever it is)
     await db
       .update(interviewSessions)
-      .set({ sessionStatus: "scheduled", updatedAt: now })
+      .set({ updatedAt: now })
       .where(eq(interviewSessions.id, payment.sessionId));
 
     // Create interviewer_earnings record
@@ -240,6 +241,9 @@ export const processWebhook = async (body: Record<string, string>) => {
         payoutMonth,
       });
     }
+
+    // Send notifications
+    await notifySessionStateChange(payment.sessionId, "payment_success");
 
     console.log(`[PayHere Webhook] Payment held for session #${payment.sessionId}`);
     return { success: true, status: "held" };
@@ -584,7 +588,7 @@ export const autoReleaseOverduePayouts = async (month: string) => {
  * Handle cancellation refund for a session.
  * Cancelled sessions are NOT added to interviewer_earnings.
  */
-export const cancelSessionPayment = async (sessionId: number, cancelledByUserId: number) => {
+export const cancelSessionPayment = async (sessionId: number, cancelledByUserId: number, forceFullRefund = false) => {
   const [payment] = await db
     .select()
     .from(payments)
@@ -595,14 +599,17 @@ export const cancelSessionPayment = async (sessionId: number, cancelledByUserId:
   if (payment.paymentStatus === "cancelled" || payment.paymentStatus === "refunded") return payment;
 
   const [session] = await db
-    .select({ scheduledDate: interviewSessions.scheduledDate })
+    .select({ scheduledDate: interviewSessions.scheduledDate, sessionStatus: interviewSessions.sessionStatus })
     .from(interviewSessions)
     .where(eq(interviewSessions.id, sessionId))
     .limit(1);
 
+  const effectiveStatus = forceFullRefund ? "pending" : (session.sessionStatus || "scheduled");
+
   const { refundAmount, reason } = calculateRefundAmount(
     new Date(session.scheduledDate),
-    parseFloat(payment.amount)
+    parseFloat(payment.amount),
+    effectiveStatus
   );
 
   const newStatus = refundAmount > 0 ? "refunded" : "cancelled";
