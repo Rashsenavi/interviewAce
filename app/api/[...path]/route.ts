@@ -39,13 +39,17 @@ async function handler(
     }
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for remote DB queries
+
   try {
     const response = await fetch(backendUrl, {
       method: req.method,
       headers,
       body,
-      // Server-side fetch has no 30s browser timeout — rely on backend response
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     const responseBody = await response.text();
     const responseHeaders = new Headers();

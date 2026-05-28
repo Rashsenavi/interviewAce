@@ -1,0 +1,15 @@
+{
+  "version": "5",
+  "dialects": {
+    "postgresql": "0.1.0"
+  },
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1779907028735,
+      "tag": "0000_mushy_starfox",
+      "breakpoints": true
+    }
+  ]
+}

@@ -48,6 +48,7 @@ const roleConfig: Record<
       { label: "User Management", href: "/admin/users", icon: Users },
       { label: "Verifications", href: "/admin/interviewers", icon: Shield },
       { label: "Payouts", href: "/admin/payouts", icon: DollarSign },
+      { label: "Support Inbox", href: "/admin/support", icon: MessageSquare },
     ],
   },
   interviewer: {
@@ -60,6 +61,7 @@ const roleConfig: Record<
       { label: "Sessions", href: "/interviewer/sessions", icon: Video },
       { label: "Earnings", href: "/interviewer/earnings", icon: DollarSign },
       { label: "Feedback", href: "/interviewer/feedback", icon: MessageSquare },
+      { label: "Support", href: "/interviewer/support", icon: HelpCircle },
     ],
   },
   job_seeker: {
@@ -75,6 +77,7 @@ const roleConfig: Record<
       { label: "Questions", href: "/job-seeker/questions", icon: HelpCircle },
       { label: "Videos", href: "/job-seeker/videos", icon: Video },
       { label: "Settings", href: "/job-seeker/settings", icon: Settings },
+      { label: "Support", href: "/job-seeker/support", icon: MessageSquare },
     ],
   },
 };

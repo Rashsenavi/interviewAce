@@ -35,7 +35,7 @@ export default function UserManagementPage() {
     try {
       const response = await adminApi.getAllUsers();
       if (response.success && response.data) {
-        setUsers(response.data.data);
+        setUsers(Array.isArray(response.data) ? response.data : response.data.data || []);
       } else {
         throw new Error(response.error?.message || "Failed to fetch users");
       }

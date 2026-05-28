@@ -1,5 +1,6 @@
-import { interviewers, users } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { interviewers, users, interviewSessions, payments, jobSeekers } from "../db/schema";
+import { eq, sql, desc } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "../config/database";
 
 type AdminServiceError = Error & { status?: number; code?: string };
@@ -176,4 +177,89 @@ export const deleteUser = async (userId: string) => {
 
   await db.delete(users).where(eq(users.id, id));
   return { success: true };
+};
+
+
+
+export const getPlatformAnalytics = async () => {
+  // 1. User Metrics
+  const [userCounts] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      jobSeekers: sql<number>`count(*) filter (where ${users.userType} = 'job_seeker')::int`,
+      interviewers: sql<number>`count(*) filter (where ${users.userType} = 'interviewer')::int`,
+      activeInterviewers: sql<number>`count(*) filter (where ${users.userType} = 'interviewer' and ${users.isVerified} = true)::int`,
+    })
+    .from(users);
+
+  // 2. Session Metrics
+  const [sessionCounts] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      completed: sql<number>`count(*) filter (where ${interviewSessions.sessionStatus} = 'completed')::int`,
+      cancelled: sql<number>`count(*) filter (where ${interviewSessions.sessionStatus} = 'cancelled')::int`,
+    })
+    .from(interviewSessions);
+
+  // 3. Financial Metrics
+  const [financials] = await db
+    .select({
+      totalRevenue: sql<number>`coalesce(sum(${payments.amount}), 0)::float`,
+      platformRevenue: sql<number>`coalesce(sum(${payments.platformCommission}), 0)::float`,
+      interviewerPayouts: sql<number>`coalesce(sum(${payments.interviewerPayout}), 0)::float`,
+    })
+    .from(payments)
+    .where(eq(payments.paymentStatus, "completed"));
+
+  const intUsers = alias(users, 'int_users');
+
+  // 4. Recent Bookings
+  const recentBookings = await db
+    .select({
+      id: interviewSessions.id,
+      scheduledDate: interviewSessions.scheduledDate,
+      sessionStatus: interviewSessions.sessionStatus,
+      priceAmount: interviewSessions.priceAmount,
+      jobSeeker: {
+        firstName: users.firstName,
+        lastName: users.lastName,
+      },
+      interviewer: {
+        firstName: intUsers.firstName,
+        lastName: intUsers.lastName,
+      },
+    })
+    .from(interviewSessions)
+    .innerJoin(jobSeekers, eq(interviewSessions.jobSeekerId, jobSeekers.id))
+    .innerJoin(users, eq(jobSeekers.userId, users.id))
+    .innerJoin(interviewers, eq(interviewSessions.interviewerId, interviewers.id))
+    .innerJoin(intUsers, eq(interviewers.userId, intUsers.id))
+    .orderBy(desc(interviewSessions.createdAt))
+    .limit(5);
+
+  // 5. Top Interviewers
+  const topInterviewers = await db
+    .select({
+      id: interviewers.id,
+      ratingAverage: interviewers.ratingAverage,
+      totalInterviews: interviewers.totalInterviews,
+      totalEarnings: interviewers.totalEarnings,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      jobTitle: interviewers.jobTitle,
+      company: interviewers.currentCompany,
+    })
+    .from(interviewers)
+    .innerJoin(users, eq(interviewers.userId, users.id))
+    .where(eq(interviewers.isVerified, true))
+    .orderBy(desc(interviewers.ratingAverage), desc(interviewers.totalInterviews))
+    .limit(5);
+
+  return {
+    users: userCounts,
+    sessions: sessionCounts,
+    financials,
+    recentBookings,
+    topInterviewers,
+  };
 };

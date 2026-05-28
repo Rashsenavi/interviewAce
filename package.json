@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:backend": "npm --prefix backend run dev",
+    "dev": "NODE_OPTIONS=--dns-result-order=ipv4first next dev",
+    "dev:backend": "NODE_OPTIONS=--dns-result-order=ipv4first npm --prefix backend run dev",
     "dev:all": "concurrently -n frontend,backend -c cyan,magenta \"npm run dev\" \"npm run dev:backend\"",
     "build": "next build",
     "start": "next start",

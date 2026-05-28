@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getPendingInterviewers, getInterviewerDetails, approveInterviewer, rejectInterviewer, getAllUsers, updateUserStatus, deleteUser } from "../services/admin.service";
+import { getPendingInterviewers, getInterviewerDetails, approveInterviewer, rejectInterviewer, getAllUsers, updateUserStatus, deleteUser, getPlatformAnalytics } from "../services/admin.service";
 
 export const getPendingVerifications = async (req: Request, res: Response) => {
   const interviewers = await getPendingInterviewers();
@@ -67,4 +67,9 @@ export const deleteUserHandler = async (req: Request, res: Response) => {
   const { userId } = req.params;
   await deleteUser(userId);
   res.json({ success: true, message: "User deleted successfully" });
+};
+
+export const getAnalyticsHandler = async (req: Request, res: Response) => {
+  const analytics = await getPlatformAnalytics();
+  res.json({ success: true, data: analytics });
 };

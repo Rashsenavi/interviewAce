@@ -23,14 +23,14 @@ export const notifySessionStateChange = async (
     if (!session) return;
 
     const [jsData] = await db
-      .select({ email: users.email, firstName: jobSeekers.firstName })
+      .select({ email: users.email, firstName: users.firstName })
       .from(jobSeekers)
       .innerJoin(users, eq(users.id, jobSeekers.userId))
       .where(eq(jobSeekers.id, session.jobSeekerId))
       .limit(1);
 
     const [intData] = await db
-      .select({ email: users.email, firstName: interviewers.firstName })
+      .select({ email: users.email, firstName: users.firstName })
       .from(interviewers)
       .innerJoin(users, eq(users.id, interviewers.userId))
       .where(eq(interviewers.id, session.interviewerId))

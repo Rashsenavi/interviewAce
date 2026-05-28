@@ -19,6 +19,7 @@ import paymentRoutes from "./routes/payment.routes";
 import feedbackRoutes from "./routes/feedback.routes";
 import adminRoutes from "./routes/admin.routes";
 import questionsRoutes from "./routes/questions.routes";
+import supportRoutes from "./routes/support.routes";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -74,6 +75,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/questions", questionsRoutes);
+app.use("/api/support", supportRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -103,7 +105,7 @@ const server = app.listen(PORT, () => {
 const gracefulShutdown = async () => {
   console.log("Shutting down server and closing database connections...");
   try {
-    await pgClient.end({ timeout: 5 });
+    await pgClient.end();
     console.log("Database connections closed.");
   } catch (err) {
     console.error("Error closing database connections", err);

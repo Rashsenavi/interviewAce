@@ -104,6 +104,13 @@ class ApiClient {
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: "DELETE" });
   }
+
+  async patch<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
@@ -416,6 +423,35 @@ export const adminApi = {
   },
   deleteUser: async (id: number | string) => {
     return apiClient.delete<{ success: boolean }>(`/admin/users/${id}`);
+  },
+  // Support Tickets
+  getTickets: async () => {
+    return apiClient.get<any[]>("/admin/tickets");
+  },
+  getTicketDetails: async (id: number | string) => {
+    return apiClient.get<any>(`/admin/tickets/${id}`);
+  },
+  replyToTicket: async (id: number | string, message: string) => {
+    return apiClient.post<any>(`/admin/tickets/${id}/messages`, { message });
+  },
+  updateTicketStatus: async (id: number | string, status: string) => {
+    return apiClient.patch<{ data: any }>(`/admin/tickets/${id}/status`, { status });
+  },
+};
+
+// User Support API
+export const supportApi = {
+  getMyTickets: async () => {
+    return apiClient.get<any[]>("/support");
+  },
+  createTicket: async (data: { subject: string; description: string; priority?: string }) => {
+    return apiClient.post<any>("/support", data);
+  },
+  getTicketDetails: async (id: number | string) => {
+    return apiClient.get<any>(`/support/${id}`);
+  },
+  replyToTicket: async (id: number | string, message: string) => {
+    return apiClient.post<any>(`/support/${id}/messages`, { message });
   },
 };
 

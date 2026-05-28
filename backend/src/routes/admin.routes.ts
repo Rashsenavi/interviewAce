@@ -9,7 +9,14 @@ import {
   getAllUsersHandler,
   updateUserStatusHandler,
   deleteUserHandler,
+  getAnalyticsHandler,
 } from "../controllers/admin.controller";
+import {
+  getTicketsHandler,
+  getTicketDetailsHandler,
+  replyTicketHandler,
+  updateTicketStatusHandler,
+} from "../controllers/support.controller";
 
 const router = Router();
 
@@ -41,10 +48,7 @@ router.put("/verification/:interviewerId/reject", authenticate, authorize("admin
  * GET /api/admin/analytics
  * Get platform analytics
  */
-router.get("/analytics", authenticate, authorize("admin"), async (req, res) => {
-  // TODO: Implement get analytics
-  res.json({ message: "Get analytics" });
-});
+router.get("/analytics", authenticate, authorize("admin"), asyncHandler(getAnalyticsHandler));
 
 /**
  * GET /api/admin/users
@@ -63,5 +67,31 @@ router.put("/users/:userId/status", authenticate, authorize("admin"), asyncHandl
  * Delete a user account
  */
 router.delete("/users/:userId", authenticate, authorize("admin"), asyncHandler(deleteUserHandler));
+
+// --- Support Tickets ---
+
+/**
+ * GET /api/admin/tickets
+ * Get all support tickets
+ */
+router.get("/tickets", authenticate, authorize("admin"), asyncHandler(getTicketsHandler));
+
+/**
+ * GET /api/admin/tickets/:id
+ * Get ticket details and messages
+ */
+router.get("/tickets/:id", authenticate, authorize("admin"), asyncHandler(getTicketDetailsHandler));
+
+/**
+ * POST /api/admin/tickets/:id/messages
+ * Add a reply to a ticket
+ */
+router.post("/tickets/:id/messages", authenticate, authorize("admin"), asyncHandler(replyTicketHandler));
+
+/**
+ * PATCH /api/admin/tickets/:id/status
+ * Update ticket status
+ */
+router.patch("/tickets/:id/status", authenticate, authorize("admin"), asyncHandler(updateTicketStatusHandler));
 
 export default router;
