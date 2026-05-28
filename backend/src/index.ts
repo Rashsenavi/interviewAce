@@ -20,6 +20,7 @@ import feedbackRoutes from "./routes/feedback.routes";
 import adminRoutes from "./routes/admin.routes";
 import questionsRoutes from "./routes/questions.routes";
 import supportRoutes from "./routes/support.routes";
+import reviewRoutes from "./routes/review.routes";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -76,6 +77,7 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/questions", questionsRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -112,8 +114,9 @@ const gracefulShutdown = async () => {
   }
   server.close(() => {
     console.log("Server stopped.");
-    process.exit(0);
   });
+  // Force exit immediately after closing DB to prevent tsx watch from hanging
+  setTimeout(() => process.exit(0), 100);
 };
 
 process.on("SIGTERM", gracefulShutdown);

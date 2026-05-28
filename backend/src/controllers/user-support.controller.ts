@@ -24,7 +24,10 @@ export const createTicketHandler = async (req: Request, res: Response) => {
     const newTicket = await supportService.createUserTicket(userId, subject, description, priority);
     res.json({ success: true, data: newTicket });
   } catch (error: any) {
-    console.error("[createTicket] Error:", error?.message || error);
+    console.error("[createTicket] Error:", error);
+    try {
+      require("fs").writeFileSync("debug_ticket_error.log", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    } catch(e) {}
     res.status(500).json({ success: false, error: { message: "Failed to create ticket", detail: error?.message } });
   }
 };

@@ -1,0 +1,74 @@
+--- backend/src/services/feedback.service.ts
++++ backend/src/services/feedback.service.ts
+@@ -1,7 +1,7 @@
+ import { db } from "../config/database";
+-import { sessionFeedback } from "../db/schema";
+-import { eq, desc } from "drizzle-orm";
++import { sessionFeedback, interviewerReviews, jobSeekers, users, interviewSessions } from "../db/schema";
++import { eq, desc, avg, count } from "drizzle-orm";
+ 
+ export async function createFeedback(data: {
+   sessionId: number;
+@@ -64,3 +64,64 @@
+     })),
+   };
+ }
++
++export async function submitInterviewerReview(data: {
++  sessionId: number;
++  jobSeekerId: number;
++  interviewerId: number;
++  rating: number;
++  reviewText: string;
++}) {
++  const result = await db.insert(interviewerReviews).values(data).returning();
++  return result[0];
++}
++
++export async function getInterviewerAnalytics(interviewerId: number) {
++  // 1. Get aggregate stats
++  const [stats] = await db
++    .select({
++      averageRating: avg(interviewerReviews.rating),
++      totalReviews: count(interviewerReviews.id),
++    })
++    .from(interviewerReviews)
++    .where(eq(interviewerReviews.interviewerId, interviewerId));
++
++  // 2. Get total completed sessions
++  const [sessionStats] = await db
++    .select({
++      totalSessions: count(interviewSessions.id),
++    })
++    .from(interviewSessions)
++    .where(eq(interviewSessions.interviewerId, interviewerId));
++
++  // 3. Get recent reviews with job seeker details
++  const reviews = await db
++    .select({
++      id: interviewerReviews.id,
++      rating: interviewerReviews.rating,
++      reviewText: interviewerReviews.reviewText,
++      createdAt: interviewerReviews.createdAt,
++      jobSeeker: {
++        id: jobSeekers.id,
++        firstName: users.firstName,
++        lastName: users.lastName,
++      },
++    })
++    .from(interviewerReviews)
++    .innerJoin(jobSeekers, eq(interviewerReviews.jobSeekerId, jobSeekers.id))
++    .innerJoin(users, eq(jobSeekers.userId, users.id))
++    .where(eq(interviewerReviews.interviewerId, interviewerId))
++    .orderBy(desc(interviewerReviews.createdAt));
++
++  return {
++    averageRating: stats?.averageRating ? parseFloat(Number(stats.averageRating).toFixed(1)) : 0,
++    totalReviews: stats?.totalReviews || 0,
++    totalSessions: sessionStats?.totalSessions || 0,
++    reviews: reviews.map((r) => ({
++      ...r,
++      jobSeekerName: `${r.jobSeeker.firstName} ${r.jobSeeker.lastName}`,
++    })),
++  };
++}

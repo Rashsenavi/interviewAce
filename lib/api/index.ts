@@ -298,30 +298,52 @@ export const sessionApi = {
 
 // Feedback API
 export const feedbackApi = {
-  getPending: async () => {
-    return apiClient.get<{ pending: any[] }>("/feedback/pending");
+  fetchMyFeedback: async () => {
+    return apiClient.get<{ success: boolean; data: { feedback: any[] } }>("/feedback/my");
   },
 
-  getSubmitted: async () => {
-    return apiClient.get<{ submitted: any[] }>("/feedback/submitted");
+  fetchMyFeedbackStats: async () => {
+    return apiClient.get<{ success: boolean; data: { stats: any } }>("/feedback/my/stats");
   },
 
-  submit: async (data: {
+  fetchSessionFeedback: async (sessionId: number | string) => {
+    return apiClient.get<{ success: boolean; data: { feedback: any } }>(`/feedback/session/${sessionId}`);
+  },
+
+  submitFeedback: async (data: {
     sessionId: number;
-    feedbackForUserId: number;
-    feedbackType: "seeker_to_interviewer" | "interviewer_to_seeker";
-    ratingOverall: number;
-    ratingCommunication?: number;
-    ratingTechnical?: number;
-    ratingProfessionalism?: number;
-    ratingHelpfulness?: number;
-    writtenFeedback?: string;
-    improvementSuggestions?: string;
-    strengthsIdentified?: string;
-    wouldRecommend?: boolean;
-    isAnonymous?: boolean;
+    jobSeekerId: number;
+    overallRating: number;
+    communicationRating: number;
+    technicalRating: number;
+    problemSolvingRating: number;
+    confidenceRating: number;
+    strengths: string;
+    weaknesses: string;
+    improvementTips: string;
+    generalComments?: string;
   }) => {
-    return apiClient.post<{ feedback: any }>("/feedback", data);
+    return apiClient.post<{ success: boolean; data: { feedback: any } }>("/feedback", data);
+  },
+};
+
+// Review API (Job Seeker -> Interviewer)
+export const reviewApi = {
+  submitReview: async (data: {
+    sessionId: number;
+    interviewerUserId: number;
+    rating: number;
+    reviewText: string;
+    isKnowledgeable?: boolean;
+    isHelpful?: boolean;
+    isActionable?: boolean;
+    isProfessional?: boolean;
+  }) => {
+    return apiClient.post<{ success: boolean; data: { review: any } }>("/reviews", data);
+  },
+  
+  fetchMyInterviewerReviews: async () => {
+    return apiClient.get<{ success: boolean; data: { stats: any } }>("/reviews/my");
   },
 };
 

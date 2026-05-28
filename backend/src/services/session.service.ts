@@ -8,6 +8,7 @@ import {
   payments,
   feedback,
   rescheduleRequests,
+  sessionFeedback,
 } from "../db/schema";
 
 export interface CreateSessionInput {
@@ -207,10 +208,23 @@ export const getInterviewerSessions = async (
         university: jobSeekers.university,
         fieldOfStudy: jobSeekers.fieldOfStudy,
       },
+      feedback: {
+        id: sessionFeedback.id,
+        overallRating: sessionFeedback.overallRating,
+        communicationRating: sessionFeedback.communicationRating,
+        technicalRating: sessionFeedback.technicalRating,
+        problemSolvingRating: sessionFeedback.problemSolvingRating,
+        confidenceRating: sessionFeedback.confidenceRating,
+        strengths: sessionFeedback.strengths,
+        weaknesses: sessionFeedback.weaknesses,
+        improvementTips: sessionFeedback.improvementTips,
+        generalComments: sessionFeedback.generalComments,
+      }
     })
     .from(interviewSessions)
     .innerJoin(jobSeekers, eq(interviewSessions.jobSeekerId, jobSeekers.id))
     .innerJoin(users, eq(jobSeekers.userId, users.id))
+    .leftJoin(sessionFeedback, eq(interviewSessions.id, sessionFeedback.sessionId))
     .where(eq(interviewSessions.interviewerId, interviewer.id))
     .orderBy(desc(interviewSessions.scheduledDate));
 

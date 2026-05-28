@@ -482,3 +482,59 @@ export const ticketMessages = pgTable("ticket_messages", {
 
 // IDE TS Server refresh trigger
 
+// Interviewer Reviews Table (Job Seeker -> Interviewer)
+export const interviewerReviews = pgTable("interviewer_reviews", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => interviewSessions.id, { onDelete: "cascade" }),
+  jobSeekerId: integer("job_seeker_id")
+    .notNull()
+    .references(() => jobSeekers.id, { onDelete: "cascade" }),
+  interviewerId: integer("interviewer_id")
+    .notNull()
+    .references(() => interviewers.id, { onDelete: "cascade" }),
+
+  rating: integer("rating").notNull(),
+  reviewText: text("review_text").notNull(),
+  
+  // Tags
+  isKnowledgeable: boolean("is_knowledgeable").default(false),
+  isHelpful: boolean("is_helpful").default(false),
+  isActionable: boolean("is_actionable").default(false),
+  isProfessional: boolean("is_professional").default(false),
+
+  createdAt: timestamp("created_at").defaultNow(),
+});
+// Session Feedback Table (Detailed Ratings)
+export const sessionFeedback = pgTable("session_feedback", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => interviewSessions.id, { onDelete: "cascade" }),
+  interviewerId: integer("interviewer_id")
+    .notNull()
+    .references(() => interviewers.id, { onDelete: "cascade" }),
+  jobSeekerId: integer("job_seeker_id")
+    .notNull()
+    .references(() => jobSeekers.id, { onDelete: "cascade" }),
+
+  // Overall
+  overallRating: integer("overall_rating").notNull(),
+
+  // Category Ratings
+  communicationRating: integer("communication_rating").notNull(),
+  technicalRating: integer("technical_rating").notNull(),
+  problemSolvingRating: integer("problem_solving_rating").notNull(),
+  confidenceRating: integer("confidence_rating").notNull(),
+
+  // Written Feedback
+  strengths: text("strengths").notNull(),
+  weaknesses: text("weaknesses").notNull(),
+  improvementTips: text("improvement_tips").notNull(),
+  generalComments: text("general_comments"),
+
+  // Visibility
+  isVisible: boolean("is_visible").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});

@@ -122,9 +122,12 @@ export default function UserSupport() {
         setNewPriority("medium");
         fetchTickets();
         setSelectedTicketId(response.data.id);
+      } else {
+        alert(response.error?.message || "Failed to create ticket. Please try again.");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert("An unexpected error occurred while submitting the ticket.");
     } finally {
       setCreatingTicket(false);
     }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { sessionApi } from "@/lib/api";
+import { sessionApi, feedbackApi } from "@/lib/api";
 import {
   Calendar,
   Clock,
@@ -11,6 +11,7 @@ import {
   XCircle,
   AlertCircle,
   Star,
+  RefreshCw,
   MessageSquare,
   X,
   ExternalLink,
@@ -25,6 +26,7 @@ type SessionStatus = "upcoming" | "completed" | "cancelled" | "pending";
 
 interface Session {
   id: string;
+  jobSeekerId: number;
   candidateName: string;
   candidateAvatar: string;
   candidateAvatarBg: string;
@@ -66,6 +68,21 @@ export default function InterviewerSessionsPage() {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
 
+  // Feedback state
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackForm, setFeedbackForm] = useState({
+    overallRating: 0,
+    communicationRating: 0,
+    technicalRating: 0,
+    problemSolvingRating: 0,
+    confidenceRating: 0,
+    strengths: "",
+    weaknesses: "",
+    improvementTips: "",
+    generalComments: "",
+  });
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+
   const isWithin24Hours = (dateStr: string) => {
     const scheduled = new Date(dateStr);
     const now = new Date();
@@ -102,6 +119,7 @@ export default function InterviewerSessionsPage() {
 
           return {
             id: s.id.toString(),
+            jobSeekerId: s.jobSeeker?.id,
             candidateName,
             candidateAvatar: initials,
             candidateAvatarBg: "bg-teal-500",
@@ -133,6 +151,43 @@ export default function InterviewerSessionsPage() {
       console.error("Failed to load sessions:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!selectedSession || feedbackForm.overallRating === 0 || !feedbackForm.strengths || !feedbackForm.weaknesses || !feedbackForm.improvementTips) return;
+    setIsProcessing(true);
+    try {
+      const res = await feedbackApi.submitFeedback({
+        sessionId: parseInt(selectedSession.id),
+        jobSeekerId: selectedSession.jobSeekerId,
+        ...feedbackForm
+      });
+      if (res.success) {
+        setFeedbackSuccess(true);
+        setTimeout(() => {
+          setShowFeedbackModal(false);
+          setSelectedSession(null);
+          setFeedbackForm({
+            overallRating: 0,
+            communicationRating: 0,
+            technicalRating: 0,
+            problemSolvingRating: 0,
+            confidenceRating: 0,
+            strengths: "",
+            weaknesses: "",
+            improvementTips: "",
+            generalComments: "",
+          });
+          setFeedbackSuccess(false);
+        }, 1500);
+      } else {
+        alert("Failed to submit feedback");
+      }
+    } catch {
+      alert("An error occurred while submitting feedback.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -602,6 +657,44 @@ export default function InterviewerSessionsPage() {
                         </>
                       )}
 
+                      {session.status === "completed" && (
+                        <button
+                          onClick={() => {
+                            setSelectedSession(session);
+                            if (session.feedback) {
+                              setFeedbackForm({
+                                overallRating: session.feedback.overallRating || 0,
+                                communicationRating: session.feedback.communicationRating || 0,
+                                technicalRating: session.feedback.technicalRating || 0,
+                                problemSolvingRating: session.feedback.problemSolvingRating || 0,
+                                confidenceRating: session.feedback.confidenceRating || 0,
+                                strengths: session.feedback.strengths || "",
+                                weaknesses: session.feedback.weaknesses || "",
+                                improvementTips: session.feedback.improvementTips || "",
+                                generalComments: session.feedback.generalComments || "",
+                              });
+                            } else {
+                              setFeedbackForm({
+                                overallRating: 0,
+                                communicationRating: 0,
+                                technicalRating: 0,
+                                problemSolvingRating: 0,
+                                confidenceRating: 0,
+                                strengths: "",
+                                weaknesses: "",
+                                improvementTips: "",
+                                generalComments: "",
+                              });
+                            }
+                            setShowFeedbackModal(true);
+                          }}
+                          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                        >
+                          <Star className="w-4 h-4" />
+                          {session.feedback ? "Edit Feedback" : "Leave Feedback"}
+                        </button>
+                      )}
+
                       <button
                         onClick={() => {
                           setSelectedSession(session);
@@ -1004,6 +1097,140 @@ export default function InterviewerSessionsPage() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Modal */}
+      {showFeedbackModal && selectedSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+              <h2 className="text-lg font-semibold text-gray-900">Provide Feedback for {selectedSession.candidateName}</h2>
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false);
+                  setSelectedSession(null);
+                  setFeedbackForm({
+                    overallRating: 0,
+                    communicationRating: 0,
+                    technicalRating: 0,
+                    problemSolvingRating: 0,
+                    confidenceRating: 0,
+                    strengths: "",
+                    weaknesses: "",
+                    improvementTips: "",
+                    generalComments: "",
+                  });
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {feedbackSuccess ? (
+              <div className="p-8 text-center">
+                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                <p className="text-gray-900 font-semibold">Feedback Submitted!</p>
+                <p className="text-gray-500 text-sm mt-1">Thank you for helping candidates improve.</p>
+              </div>
+            ) : (
+              <>
+                <div className="p-6 space-y-6">
+                  {/* Ratings */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900 border-b pb-2">Ratings</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.keys(feedbackForm).filter(k => k.includes("Rating")).map((key) => {
+                        const label = key.replace("Rating", "").replace(/([A-Z])/g, ' $1').trim();
+                        const displayLabel = label.charAt(0).toUpperCase() + label.slice(1) + " Rating";
+                        return (
+                          <div key={key}>
+                            <label className="block text-sm text-gray-700 mb-1">{displayLabel}</label>
+                            <div className="flex gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  onClick={() => setFeedbackForm({ ...feedbackForm, [key]: star })}
+                                  className={`p-1 transition-colors ${(feedbackForm[key as keyof typeof feedbackForm] as number) >= star ? 'text-yellow-400' : 'text-gray-300'}`}
+                                >
+                                  <Star className={`w-5 h-5 ${(feedbackForm[key as keyof typeof feedbackForm] as number) >= star ? 'fill-current' : ''}`} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Written Feedback */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-gray-900 border-b pb-2">Written Feedback</h3>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Strengths (Required)</label>
+                      <textarea
+                        value={feedbackForm.strengths}
+                        onChange={(e) => setFeedbackForm({ ...feedbackForm, strengths: e.target.value })}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                        rows={2}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Areas for Improvement (Required)</label>
+                      <textarea
+                        value={feedbackForm.weaknesses}
+                        onChange={(e) => setFeedbackForm({ ...feedbackForm, weaknesses: e.target.value })}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                        rows={2}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Actionable Tips (Required)</label>
+                      <textarea
+                        value={feedbackForm.improvementTips}
+                        onChange={(e) => setFeedbackForm({ ...feedbackForm, improvementTips: e.target.value })}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                        rows={2}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">General Comments (Optional)</label>
+                      <textarea
+                        value={feedbackForm.generalComments}
+                        onChange={(e) => setFeedbackForm({ ...feedbackForm, generalComments: e.target.value })}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl sticky bottom-0 z-10">
+                  <button
+                    onClick={() => {
+                      setShowFeedbackModal(false);
+                      setSelectedSession(null);
+                    }}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleFeedbackSubmit}
+                    disabled={isProcessing || feedbackForm.overallRating === 0 || !feedbackForm.strengths || !feedbackForm.weaknesses || !feedbackForm.improvementTips}
+                    className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isProcessing ? "Submitting…" : "Submit Feedback"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

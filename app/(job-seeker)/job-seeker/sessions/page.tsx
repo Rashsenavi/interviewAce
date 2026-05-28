@@ -15,7 +15,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { sessionApi } from "@/lib/api";
+import { sessionApi, reviewApi } from "@/lib/api";
 
 type SessionStatus = "pending" | "scheduled" | "rescheduled" | "in_progress" | "completed" | "cancelled" | "no_show";
 
@@ -78,6 +78,19 @@ export default function MySessionsPage() {
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
   const [rescheduleSuccess, setRescheduleSuccess] = useState(false);
+
+  // Review state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewSession, setReviewSession] = useState<Session | null>(null);
+  const [reviewForm, setReviewForm] = useState({
+    rating: 0,
+    reviewText: "",
+    isKnowledgeable: false,
+    isHelpful: false,
+    isActionable: false,
+    isProfessional: false,
+  });
+  const [reviewSuccess, setReviewSuccess] = useState(false);
 
   const loadSessions = async () => {
     setLoading(true);
@@ -255,6 +268,33 @@ export default function MySessionsPage() {
       }
     } catch {
       alert("An error occurred. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReviewSubmit = async () => {
+    if (!reviewSession || reviewForm.rating === 0 || !reviewForm.reviewText) return;
+    setIsProcessing(true);
+    try {
+      const res = await reviewApi.submitReview({
+        sessionId: reviewSession.id,
+        interviewerUserId: reviewSession.interviewer.userId,
+        ...reviewForm
+      });
+      if (res.success) {
+        setReviewSuccess(true);
+        setTimeout(() => {
+          setShowReviewModal(false);
+          setReviewSession(null);
+          setReviewForm({ rating: 0, reviewText: "", isKnowledgeable: false, isHelpful: false, isActionable: false, isProfessional: false });
+          setReviewSuccess(false);
+        }, 1500);
+      } else {
+        alert("Failed to submit review");
+      }
+    } catch {
+      alert("An error occurred while submitting your review.");
     } finally {
       setIsProcessing(false);
     }
@@ -487,13 +527,16 @@ export default function MySessionsPage() {
 
                         {session.sessionStatus === "completed" && (
                           <>
-                            <Link
-                              href="/job-seeker/feedback"
+                            <button
+                              onClick={() => {
+                                setReviewSession(session);
+                                setShowReviewModal(true);
+                              }}
                               className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
                             >
                               <Star className="w-4 h-4" />
                               Leave Review
-                            </Link>
+                            </button>
                             <Link
                               href={`/job-seeker/interviewers/${session.interviewer.userId}`}
                               className="flex items-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-medium"
@@ -713,6 +756,110 @@ export default function MySessionsPage() {
                     ) : (
                       "Confirm New Time"
                     )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && reviewSession && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Review Interviewer</h2>
+              <button
+                onClick={() => {
+                  setShowReviewModal(false);
+                  setReviewSession(null);
+                  setReviewForm({ rating: 0, reviewText: "", isKnowledgeable: false, isHelpful: false, isActionable: false, isProfessional: false });
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {reviewSuccess ? (
+              <div className="p-8 text-center">
+                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                <p className="text-gray-900 font-semibold">Review Submitted!</p>
+                <p className="text-gray-500 text-sm mt-1">Thank you for your feedback.</p>
+              </div>
+            ) : (
+              <>
+                <div className="p-6 space-y-5">
+                  <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 text-center">
+                    <p className="text-sm text-gray-500 mb-1">Session with</p>
+                    <p className="font-semibold text-gray-900">{reviewSession.interviewer.firstName} {reviewSession.interviewer.lastName}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 text-center">Overall Rating</label>
+                    <div className="flex justify-center gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                          className={`p-1 transition-colors ${reviewForm.rating >= star ? 'text-yellow-400' : 'text-gray-300'}`}
+                        >
+                          <Star className={`w-8 h-8 ${reviewForm.rating >= star ? 'fill-current' : ''}`} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Written Review</label>
+                    <textarea
+                      value={reviewForm.reviewText}
+                      onChange={(e) => setReviewForm({ ...reviewForm, reviewText: e.target.value })}
+                      placeholder="How was your session? What did you like?"
+                      className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">What did you appreciate? (Select all that apply)</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${reviewForm.isHelpful ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <input type="checkbox" className="hidden" checked={reviewForm.isHelpful} onChange={() => setReviewForm({ ...reviewForm, isHelpful: !reviewForm.isHelpful })} />
+                        <span className="text-sm font-medium mx-auto">👍 Helpful</span>
+                      </label>
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${reviewForm.isKnowledgeable ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <input type="checkbox" className="hidden" checked={reviewForm.isKnowledgeable} onChange={() => setReviewForm({ ...reviewForm, isKnowledgeable: !reviewForm.isKnowledgeable })} />
+                        <span className="text-sm font-medium mx-auto">💡 Knowledgeable</span>
+                      </label>
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${reviewForm.isActionable ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <input type="checkbox" className="hidden" checked={reviewForm.isActionable} onChange={() => setReviewForm({ ...reviewForm, isActionable: !reviewForm.isActionable })} />
+                        <span className="text-sm font-medium mx-auto">🎯 Actionable</span>
+                      </label>
+                      <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${reviewForm.isProfessional ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                        <input type="checkbox" className="hidden" checked={reviewForm.isProfessional} onChange={() => setReviewForm({ ...reviewForm, isProfessional: !reviewForm.isProfessional })} />
+                        <span className="text-sm font-medium mx-auto">👔 Professional</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                  <button
+                    onClick={() => {
+                      setShowReviewModal(false);
+                      setReviewSession(null);
+                    }}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReviewSubmit}
+                    disabled={isProcessing || reviewForm.rating === 0 || !reviewForm.reviewText}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isProcessing ? "Submitting…" : "Submit Review"}
                   </button>
                 </div>
               </>
