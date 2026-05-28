@@ -21,6 +21,7 @@ import {
   FileText,
   DollarSign,
 } from "lucide-react";
+import { UploadVideoModal } from "./components/UploadVideoModal";
 
 type SessionStatus = "upcoming" | "completed" | "cancelled" | "pending";
 
@@ -57,6 +58,7 @@ export default function InterviewerSessionsPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showVideoUploadModal, setShowVideoUploadModal] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -658,41 +660,54 @@ export default function InterviewerSessionsPage() {
                       )}
 
                       {session.status === "completed" && (
-                        <button
-                          onClick={() => {
-                            setSelectedSession(session);
-                            if (session.feedback) {
-                              setFeedbackForm({
-                                overallRating: session.feedback.overallRating || 0,
-                                communicationRating: session.feedback.communicationRating || 0,
-                                technicalRating: session.feedback.technicalRating || 0,
-                                problemSolvingRating: session.feedback.problemSolvingRating || 0,
-                                confidenceRating: session.feedback.confidenceRating || 0,
-                                strengths: session.feedback.strengths || "",
-                                weaknesses: session.feedback.weaknesses || "",
-                                improvementTips: session.feedback.improvementTips || "",
-                                generalComments: session.feedback.generalComments || "",
-                              });
-                            } else {
-                              setFeedbackForm({
-                                overallRating: 0,
-                                communicationRating: 0,
-                                technicalRating: 0,
-                                problemSolvingRating: 0,
-                                confidenceRating: 0,
-                                strengths: "",
-                                weaknesses: "",
-                                improvementTips: "",
-                                generalComments: "",
-                              });
-                            }
-                            setShowFeedbackModal(true);
-                          }}
-                          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <Star className="w-4 h-4" />
-                          {session.feedback ? "Edit Feedback" : "Leave Feedback"}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedSession(session);
+                              if (session.feedback) {
+                                setFeedbackForm({
+                                  overallRating: session.feedback.overallRating || 0,
+                                  communicationRating: session.feedback.communicationRating || 0,
+                                  technicalRating: session.feedback.technicalRating || 0,
+                                  problemSolvingRating: session.feedback.problemSolvingRating || 0,
+                                  confidenceRating: session.feedback.confidenceRating || 0,
+                                  strengths: session.feedback.strengths || "",
+                                  weaknesses: session.feedback.weaknesses || "",
+                                  improvementTips: session.feedback.improvementTips || "",
+                                  generalComments: session.feedback.generalComments || "",
+                                });
+                              } else {
+                                setFeedbackForm({
+                                  overallRating: 0,
+                                  communicationRating: 0,
+                                  technicalRating: 0,
+                                  problemSolvingRating: 0,
+                                  confidenceRating: 0,
+                                  strengths: "",
+                                  weaknesses: "",
+                                  improvementTips: "",
+                                  generalComments: "",
+                                });
+                              }
+                              setShowFeedbackModal(true);
+                            }}
+                            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                          >
+                            <Star className="w-4 h-4" />
+                            {session.feedback ? "Edit Feedback" : "Leave Feedback"}
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              setSelectedSession(session);
+                              setShowVideoUploadModal(true);
+                            }}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                          >
+                            <Video className="w-4 h-4" />
+                            Upload Video
+                          </button>
+                        </>
                       )}
 
                       <button
@@ -1233,6 +1248,22 @@ export default function InterviewerSessionsPage() {
             )}
           </div>
         </div>
+      )}
+      {/* Upload Video Modal */}
+      {showVideoUploadModal && selectedSession && (
+        <UploadVideoModal
+          session={selectedSession}
+          onClose={() => {
+            setShowVideoUploadModal(false);
+            setSelectedSession(null);
+          }}
+          onSuccess={() => {
+            setShowVideoUploadModal(false);
+            setSelectedSession(null);
+            alert("Video uploaded successfully! It is now pending admin approval.");
+            fetchSessions();
+          }}
+        />
       )}
     </div>
   );

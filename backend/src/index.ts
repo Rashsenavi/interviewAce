@@ -21,6 +21,7 @@ import adminRoutes from "./routes/admin.routes";
 import questionsRoutes from "./routes/questions.routes";
 import supportRoutes from "./routes/support.routes";
 import reviewRoutes from "./routes/review.routes";
+import videoRoutes from "./routes/video.routes";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -78,6 +79,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/questions", questionsRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/videos", videoRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

@@ -477,4 +477,41 @@ export const supportApi = {
   },
 };
 
+// Video API
+export const videoApi = {
+  getApprovedVideos: async (params?: { industryId?: number }) => {
+    const qs = params?.industryId ? `?industryId=${params.industryId}` : "";
+    return apiClient.get<{ videos: any[] }>(`/videos/approved${qs}`);
+  },
+  
+  incrementViewCount: async (id: number) => {
+    return apiClient.post<{ success: boolean }>(`/videos/${id}/view`);
+  },
+
+  uploadVideo: async (data: {
+    sessionId?: number;
+    industryId?: number;
+    videoTitle: string;
+    videoDescription?: string;
+    videoUrl: string;
+    thumbnailUrl?: string;
+    videoType: string;
+    durationSeconds?: number;
+  }) => {
+    return apiClient.post<{ video: any }>("/videos/upload", data);
+  },
+
+  getPendingVideos: async () => {
+    return apiClient.get<{ videos: any[] }>("/videos/pending");
+  },
+
+  approveVideo: async (id: number) => {
+    return apiClient.post<{ video: any }>(`/videos/${id}/approve`);
+  },
+
+  rejectVideo: async (id: number) => {
+    return apiClient.post<{ video: any }>(`/videos/${id}/reject`);
+  },
+};
+
 export default apiClient;

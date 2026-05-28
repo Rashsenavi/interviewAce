@@ -349,9 +349,8 @@ export const questionBank = pgTable("question_bank", {
 // Sample Videos Table
 export const sampleVideos = pgTable("sample_videos", {
   id: serial("id").primaryKey(),
-  industryId: integer("industry_id")
-    .notNull()
-    .references(() => industries.id, { onDelete: "cascade" }),
+  sessionId: integer("session_id").references(() => interviewSessions.id, { onDelete: "set null" }),
+  industryId: integer("industry_id").references(() => industries.id, { onDelete: "cascade" }),
   videoTitle: varchar("video_title", { length: 255 }).notNull(),
   videoDescription: text("video_description"),
   videoUrl: varchar("video_url", { length: 500 }).notNull(),
@@ -359,6 +358,7 @@ export const sampleVideos = pgTable("sample_videos", {
   videoType: varchar("video_type", { length: 50 }).notNull(),
   durationSeconds: integer("duration_seconds"),
   uploadedByUserId: integer("uploaded_by_user_id").references(() => users.id),
+  adminApprovalStatus: varchar("admin_approval_status", { length: 20 }).default("pending"),
   viewCount: integer("view_count").default(0),
   isFeatured: boolean("is_featured").default(false),
   isActive: boolean("is_active").default(true),
