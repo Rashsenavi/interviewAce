@@ -42,7 +42,7 @@ interface Session {
   meetingLink?: string;
   notes?: string;
   rating?: number;
-  feedback?: string;
+  feedback?: any;
   rescheduleCount?: number;
   originalScheduledDate?: string;
 }
@@ -575,7 +575,7 @@ export default function InterviewerSessionsPage() {
                           </div>
                         </div>
                         {session.feedback && (
-                          <p className="text-sm text-gray-600 italic">"{session.feedback}"</p>
+                          <p className="text-sm text-gray-600 italic">"{session.feedback.generalComments || session.feedback.strengths || "Detailed feedback provided"}"</p>
                         )}
                       </div>
                     )}

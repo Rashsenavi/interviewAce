@@ -200,7 +200,7 @@ export default function InterviewerDashboardPage() {
             meetingLink: s.meetingLink || "",
             notes: s.notes || "",
             rating: s.rating || 5,
-            feedback: s.feedback || "Great session, no detailed written review left.",
+            feedback: s.feedback?.generalComments || s.feedback?.strengths || "Great session, no detailed written review left.",
           };
         });
 

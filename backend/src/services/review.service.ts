@@ -30,14 +30,9 @@ export async function getInterviewerReviews(interviewerId: number) {
       isActionable: interviewerReviews.isActionable,
       isProfessional: interviewerReviews.isProfessional,
       createdAt: interviewerReviews.createdAt,
-      jobSeeker: {
-        id: jobSeekers.id,
-        university: jobSeekers.university,
-        user: {
-          firstName: users.firstName,
-          lastName: users.lastName,
-        }
-      }
+      jobSeekerUniversity: jobSeekers.university,
+      jobSeekerFirstName: users.firstName,
+      jobSeekerLastName: users.lastName,
     })
     .from(interviewerReviews)
     .innerJoin(jobSeekers, eq(interviewerReviews.jobSeekerId, jobSeekers.id))
@@ -55,8 +50,8 @@ export async function getInterviewerReviews(interviewerId: number) {
     isActionable: r.isActionable,
     isProfessional: r.isProfessional,
     createdAt: r.createdAt,
-    jobSeekerName: `${r.jobSeeker.user.firstName} ${r.jobSeeker.user.lastName}`,
-    jobSeekerUniversity: r.jobSeeker.university,
+    jobSeekerName: `${r.jobSeekerFirstName} ${r.jobSeekerLastName}`,
+    jobSeekerUniversity: r.jobSeekerUniversity,
   }));
 }
 

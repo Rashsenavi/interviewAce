@@ -201,7 +201,7 @@ export const processWebhook = async (body: Record<string, string>) => {
       .set({
         payhereTransactionId: payment_id,
         paymentMethod: method,
-        paymentStatus: "held",
+        paymentStatus: "completed",
         payhereRawStatus: rawStatus,
         paymentDate: now,
         updatedAt: now,
@@ -245,8 +245,8 @@ export const processWebhook = async (body: Record<string, string>) => {
     // Send notifications
     await notifySessionStateChange(payment.sessionId, "payment_success");
 
-    console.log(`[PayHere Webhook] Payment held for session #${payment.sessionId}`);
-    return { success: true, status: "held" };
+    console.log(`[PayHere Webhook] Payment completed for session #${payment.sessionId}`);
+    return { success: true, status: "completed" };
   }
 
   // ── Cancelled / Failed ────────────────────────────────────────────────────

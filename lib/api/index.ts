@@ -299,15 +299,15 @@ export const sessionApi = {
 // Feedback API
 export const feedbackApi = {
   fetchMyFeedback: async () => {
-    return apiClient.get<{ success: boolean; data: { feedback: any[] } }>("/feedback/my");
+    return apiClient.get<{ feedback: any[] }>("/feedback/my");
   },
 
   fetchMyFeedbackStats: async () => {
-    return apiClient.get<{ success: boolean; data: { stats: any } }>("/feedback/my/stats");
+    return apiClient.get<{ stats: any }>("/feedback/my/stats");
   },
 
   fetchSessionFeedback: async (sessionId: number | string) => {
-    return apiClient.get<{ success: boolean; data: { feedback: any } }>(`/feedback/session/${sessionId}`);
+    return apiClient.get<{ feedback: any }>(`/feedback/session/${sessionId}`);
   },
 
   submitFeedback: async (data: {
@@ -339,11 +339,11 @@ export const reviewApi = {
     isActionable?: boolean;
     isProfessional?: boolean;
   }) => {
-    return apiClient.post<{ success: boolean; data: { review: any } }>("/reviews", data);
+    return apiClient.post<{ review: any }>("/reviews", data);
   },
   
   fetchMyInterviewerReviews: async () => {
-    return apiClient.get<{ success: boolean; data: { stats: any } }>("/reviews/my");
+    return apiClient.get<{ stats: any }>("/reviews/my");
   },
 };
 
