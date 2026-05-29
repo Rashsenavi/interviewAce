@@ -9,6 +9,8 @@ import {
   Star,
   TrendingUp,
   Video,
+  Building2,
+  Award,
 } from "lucide-react";
 import { Space_Grotesk, Manrope } from "next/font/google";
 
@@ -24,6 +26,7 @@ const bodyFont = Manrope({
   variable: "--font-body",
 });
 
+// ─── Marketing stats (kept as-is per design decision) ────────────────────────
 const stats = [
   { label: "Sessions completed", value: "2,500+" },
   { label: "Verified interviewers", value: "180+" },
@@ -69,24 +72,25 @@ const features = [
   },
 ];
 
-const testimonials = [
+// Fallback testimonials — used only if DB has fewer than 3 real reviews
+const FALLBACK_TESTIMONIALS = [
   {
-    quote:
-      "I stopped freezing in technical interviews after two sessions. The feedback was specific and practical.",
+    quote: "I stopped freezing in technical interviews after two sessions. The feedback was specific and practical.",
     name: "Kasun Perera",
     role: "Software Engineer, WSO2",
+    rating: 5,
   },
   {
-    quote:
-      "It felt like a real interview panel, not a coaching chat. That realism made all the difference.",
+    quote: "It felt like a real interview panel, not a coaching chat. That realism made all the difference.",
     name: "Thilini Fernando",
     role: "Management Trainee, Banking",
+    rating: 5,
   },
   {
-    quote:
-      "The structure helped me answer behavioral questions with confidence and better storytelling.",
+    quote: "The structure helped me answer behavioral questions with confidence and better storytelling.",
     name: "Ravindu Silva",
     role: "Graduate Analyst",
+    rating: 5,
   },
 ];
 
@@ -117,12 +121,49 @@ const plans = [
   },
 ];
 
-export default function InterviewAceLanding() {
+// ─── Server-side data fetch helpers ──────────────────────────────────────────
+async function fetchPublicData<T>(path: string): Promise<T | null> {
+  try {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:3001";
+    const res = await fetch(`${backendUrl}/api/public/${path}`, {
+      next: { revalidate: 300 }, // Cache for 5 minutes
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export default async function InterviewAceLanding() {
+  // Fetch real data server-side (with 5 min cache)
+  const [interviewersData, testimonialsData] = await Promise.all([
+    fetchPublicData<{ interviewers: any[] }>("interviewers"),
+    fetchPublicData<{ testimonials: any[] }>("testimonials"),
+  ]);
+
+  const liveInterviewers = interviewersData?.interviewers ?? [];
+  const realTestimonials = testimonialsData?.testimonials ?? [];
+
+  // Use real testimonials if we have 3+, otherwise fall back to hardcoded
+  const displayTestimonials =
+    realTestimonials.length >= 3
+      ? realTestimonials.slice(0, 3).map((t: any) => ({
+          quote: t.reviewText,
+          name: `${t.reviewerFirstName} ${t.reviewerLastName}`,
+          role: "InterviewAce User",
+          rating: t.rating,
+        }))
+      : FALLBACK_TESTIMONIALS;
+
   return (
     <div
       className={`${headingFont.variable} ${bodyFont.variable} min-h-screen bg-[linear-gradient(180deg,#fffaf2_0%,#f7fbff_45%,#ffffff_100%)] text-slate-900`}
       style={{ fontFamily: "var(--font-body)" }}
     >
+      {/* ── Header ── */}
       <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/85 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 md:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
@@ -138,15 +179,9 @@ export default function InterviewAceLanding() {
           </Link>
 
           <nav className="hidden items-center gap-7 text-sm text-slate-600 md:flex">
-            <a href="#how" className="transition-colors hover:text-slate-900">
-              How it works
-            </a>
-            <a href="#features" className="transition-colors hover:text-slate-900">
-              Features
-            </a>
-            <a href="#pricing" className="transition-colors hover:text-slate-900">
-              Pricing
-            </a>
+            <a href="#how" className="transition-colors hover:text-slate-900">How it works</a>
+            <a href="#interviewers" className="transition-colors hover:text-slate-900">Interviewers</a>
+            <a href="#pricing" className="transition-colors hover:text-slate-900">Pricing</a>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -163,10 +198,11 @@ export default function InterviewAceLanding() {
         </div>
       </header>
 
+      {/* ── Hero ── */}
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute -left-28 top-16 h-72 w-72 rounded-full bg-orange-200/45 blur-3xl" />
         <div className="pointer-events-none absolute -right-16 top-8 h-64 w-64 rounded-full bg-sky-200/50 blur-3xl" />
-          <div className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 pb-16 pt-14 md:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:pt-20">
+        <div className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 pb-16 pt-14 md:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8 lg:pt-20">
           <div>
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
               <Sparkles className="h-3.5 w-3.5" />
@@ -236,6 +272,7 @@ export default function InterviewAceLanding() {
         </div>
       </section>
 
+      {/* ── Stats bar ── */}
       <section className="border-y border-slate-200 bg-white/80">
         <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-4 px-4 py-8 md:grid-cols-4 md:px-6 lg:px-8">
           {stats.map((stat) => (
@@ -247,6 +284,7 @@ export default function InterviewAceLanding() {
         </div>
       </section>
 
+      {/* ── How it works ── */}
       <section id="how" className="mx-auto w-full max-w-7xl px-4 py-16 md:px-6 lg:px-8 lg:py-20">
         <div className="mb-10 max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">How it works</p>
@@ -269,6 +307,7 @@ export default function InterviewAceLanding() {
         </div>
       </section>
 
+      {/* ── Features ── */}
       <section id="features" className="bg-slate-950 py-16 text-slate-100 lg:py-20">
         <div className="mx-auto w-full max-w-7xl px-4 md:px-6 lg:px-8">
           <div className="mb-10 max-w-2xl">
@@ -298,6 +337,109 @@ export default function InterviewAceLanding() {
         </div>
       </section>
 
+      {/* ── Meet Our Interviewers (REAL DATA) ── */}
+      {liveInterviewers.length > 0 && (
+        <section id="interviewers" className="mx-auto w-full max-w-7xl px-4 py-16 md:px-6 lg:px-8 lg:py-20">
+          <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Our Interviewers</p>
+              <h2
+                className="mt-2 text-3xl font-bold text-slate-950 md:text-4xl"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Verified professionals ready to help you
+              </h2>
+              <p className="mt-3 text-sm text-slate-600">
+                Every interviewer on our platform is manually verified. They bring real hiring experience from top companies.
+              </p>
+            </div>
+            <Link
+              href="/register"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-slate-400"
+            >
+              Browse all
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {liveInterviewers.slice(0, 6).map((iv: any) => {
+              const initials = `${iv.firstName?.[0] ?? ""}${iv.lastName?.[0] ?? ""}`.toUpperCase();
+              const rating = parseFloat(iv.ratingAverage ?? "0");
+              const expertise = iv.industryExpertise
+                ? iv.industryExpertise.split(",").slice(0, 2).map((s: string) => s.trim())
+                : [];
+
+              return (
+                <article
+                  key={iv.id}
+                  className="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-orange-200 hover:shadow-md"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700 select-none">
+                      {initials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        {iv.firstName} {iv.lastName}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">{iv.jobTitle}</p>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <Building2 className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                        <p className="text-xs text-slate-500 truncate">{iv.currentCompany}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  {expertise.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {expertise.map((tag: string) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-medium text-slate-600"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+                    <div className="flex items-center gap-1">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                      <span className="text-sm font-semibold text-slate-800">
+                        {rating > 0 ? rating.toFixed(1) : "New"}
+                      </span>
+                      {iv.totalInterviews > 0 && (
+                        <span className="text-xs text-slate-400 ml-1">· {iv.totalInterviews} sessions</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Award className="h-3.5 w-3.5 text-orange-500" />
+                      <span className="text-xs font-medium text-orange-600">Verified</span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="mt-10 text-center">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-orange-600"
+            >
+              Book a session
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* ── Testimonials (real DB data with hardcoded fallback) ── */}
       <section className="mx-auto w-full max-w-7xl px-4 py-16 md:px-6 lg:px-8 lg:py-20">
         <div className="mb-10 max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Success stories</p>
@@ -310,11 +452,11 @@ export default function InterviewAceLanding() {
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">
-          {testimonials.map((item) => (
-            <article key={item.name} className="rounded-2xl border border-slate-200 bg-white p-6">
+          {displayTestimonials.map((item, i) => (
+            <article key={i} className="rounded-2xl border border-slate-200 bg-white p-6">
               <div className="mb-4 flex gap-1 text-amber-500">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className="h-4 w-4 fill-current" />
+                {Array.from({ length: item.rating }).map((_, j) => (
+                  <Star key={j} className="h-4 w-4 fill-current" />
                 ))}
               </div>
               <p className="text-sm leading-relaxed text-slate-700">"{item.quote}"</p>
@@ -327,6 +469,7 @@ export default function InterviewAceLanding() {
         </div>
       </section>
 
+      {/* ── Pricing ── */}
       <section id="pricing" className="bg-slate-100 py-16 lg:py-20">
         <div className="mx-auto w-full max-w-7xl px-4 md:px-6 lg:px-8">
           <div className="mb-10 max-w-2xl">
@@ -378,6 +521,7 @@ export default function InterviewAceLanding() {
         </div>
       </section>
 
+      {/* ── CTA ── */}
       <section className="mx-auto w-full max-w-7xl px-4 py-16 md:px-6 lg:px-8">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center md:p-12">
           <p className="mx-auto inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -412,19 +556,14 @@ export default function InterviewAceLanding() {
         </div>
       </section>
 
+      {/* ── Footer ── */}
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-slate-500 md:flex-row md:px-6 lg:px-8">
           <p>2026 InterviewAce. All rights reserved.</p>
           <div className="flex items-center gap-5">
-            <Link href="/login" className="hover:text-slate-800">
-              Login
-            </Link>
-            <Link href="/register" className="hover:text-slate-800">
-              Register
-            </Link>
-            <a href="#how" className="hover:text-slate-800">
-              How it works
-            </a>
+            <Link href="/login" className="hover:text-slate-800">Login</Link>
+            <Link href="/register" className="hover:text-slate-800">Register</Link>
+            <a href="#how" className="hover:text-slate-800">How it works</a>
           </div>
         </div>
       </footer>

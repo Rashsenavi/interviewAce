@@ -7,11 +7,13 @@ import {
   Star,
   Video,
   Clock,
-  ChevronRight,
   CalendarDays,
   Users,
   CheckCircle,
-  Briefcase,
+  ArrowUpRight,
+  Search,
+  BookOpen,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { sessionApi, interviewerApi } from "@/lib/api";
@@ -63,21 +65,102 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   mixed: "Mixed",
 };
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+function formatDateTime(dateStr: string) {
+  const d = new Date(dateStr);
+  return {
+    date: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+    time: d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+  };
 }
 
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+// ─── Stat card ─────────────────────────────────────────────────────────────────
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  iconBg,
+  iconColor,
+  trend,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg: string;
+  iconColor: string;
+  trend?: { direction: "up" | "neutral"; label: string };
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400">{label}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+        </div>
+        <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon className={`h-5 w-5 ${iconColor}`} />
+        </div>
+      </div>
+      {trend && (
+        <div className="mt-3 flex items-center gap-1">
+          <ArrowUpRight className={`h-3.5 w-3.5 ${trend.direction === "up" ? "text-emerald-500" : "text-slate-400"}`} />
+          <span className={`text-xs font-medium ${trend.direction === "up" ? "text-emerald-600" : "text-slate-400"}`}>
+            {trend.label}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
+// ─── Empty state ───────────────────────────────────────────────────────────────
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  action?: { label: string; href: string };
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 mb-4">
+        <Icon className="h-6 w-6 text-slate-400" />
+      </div>
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      <p className="mt-1 text-xs text-slate-400 max-w-xs">{description}</p>
+      {action && (
+        <Link
+          href={action.href}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
+        >
+          {action.label}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// ─── Status badge ──────────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    scheduled: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    pending: "bg-amber-50 text-amber-700 border-amber-200",
+    rescheduled: "bg-sky-50 text-sky-700 border-sky-200",
+    completed: "bg-slate-100 text-slate-600 border-slate-200",
+    cancelled: "bg-red-50 text-red-600 border-red-200",
+  };
+  const label = status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ");
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${map[status] ?? "bg-slate-100 text-slate-600 border-slate-200"}`}>
+      {label}
+    </span>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function JobSeekerDashboardPage() {
   const { user } = useAuth();
   const userName = user?.firstName || "Candidate";
@@ -96,16 +179,12 @@ export default function JobSeekerDashboardPage() {
           interviewerApi.getAll({ isVerified: true, sortBy: "rating", sortOrder: "desc" }),
         ]);
 
-        if (statsRes.success && statsRes.data?.stats) {
-          setStats(statsRes.data.stats);
-        }
+        if (statsRes.success && statsRes.data?.stats) setStats(statsRes.data.stats);
         if (sessionsRes.success && sessionsRes.data?.sessions) {
-          setUpcomingSessions((sessionsRes.data.sessions as SessionData[]).slice(0, 2));
+          setUpcomingSessions((sessionsRes.data.sessions as SessionData[]).slice(0, 3));
         }
         if (interviewersRes.success && interviewersRes.data?.interviewers) {
-          setRecommendedInterviewers(
-            (interviewersRes.data.interviewers as RecommendedInterviewer[]).slice(0, 2)
-          );
+          setRecommendedInterviewers((interviewersRes.data.interviewers as RecommendedInterviewer[]).slice(0, 3));
         }
       } catch (err) {
         console.error("Dashboard load error:", err);
@@ -113,284 +192,273 @@ export default function JobSeekerDashboardPage() {
         setLoading(false);
       }
     };
-
     loadDashboard();
   }, []);
 
-  // Calculate profile completion
-  const profileFields = [
-    user?.firstName,
-    user?.lastName,
-    user?.email,
-    // phoneNumber, university, etc. can be added once profile API is used
-  ];
   const profileCompletion = Math.round(
-    (profileFields.filter(Boolean).length / profileFields.length) * 100
+    ([user?.firstName, user?.lastName, user?.email].filter(Boolean).length / 3) * 100
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
-      {/* Welcome + Profile + Buttons + Stats Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-        {/* Welcome Header */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Welcome back, {userName}! 👋
-        </h1>
-        <p className="text-gray-500 text-sm mb-8">
-          Here&apos;s your interview preparation progress
-        </p>
+    <div className="space-y-6">
 
-        {/* Profile Progress Bar */}
-        <div
-          className="bg-linear-to-r from-blue-600 to-blue-500 rounded-xl p-5 flex items-center justify-between"
-          style={{ marginBottom: "40px" }}
-        >
-          <div className="flex-1 mr-6">
-            <p className="text-blue-100 text-xs mb-0.5">Profile Completion</p>
-            <p className="text-white text-2xl font-bold mb-2">{profileCompletion}%</p>
-            <div className="w-full max-w-md bg-blue-400/40 rounded-full h-1.5">
-              <div
-                className="bg-white rounded-full h-1.5 transition-all duration-700"
-                style={{ width: `${profileCompletion}%` }}
-              />
+      {/* ── Welcome banner ── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Welcome back, {userName}</h1>
+            <p className="mt-1 text-sm text-slate-400">Here's your interview preparation progress</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href="/job-seeker/interviewers"
+              className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
+            >
+              <Calendar className="h-4 w-4" />
+              Book Interview
+            </Link>
+            <Link
+              href="/job-seeker/questions"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <BookOpen className="h-4 w-4" />
+              Practice Questions
+            </Link>
+          </div>
+        </div>
+
+        {/* Profile completion bar */}
+        <div className="mt-6 rounded-lg bg-slate-50 border border-slate-100 p-4">
+          <div className="flex items-center justify-between text-xs mb-2">
+            <span className="font-medium text-slate-600">Profile Completion</span>
+            <span className="font-semibold text-slate-900">{profileCompletion}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-orange-500 transition-all duration-700"
+              style={{ width: `${profileCompletion}%` }}
+            />
+          </div>
+          {profileCompletion < 100 && (
+            <Link
+              href="/job-seeker/settings"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors"
+            >
+              Complete your profile <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* ── Stats row ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Total Sessions"
+          value={loading ? "—" : stats?.totalSessions ?? 0}
+          icon={CalendarDays}
+          iconBg="bg-sky-50"
+          iconColor="text-sky-600"
+          trend={{ direction: "neutral", label: "All time" }}
+        />
+        <StatCard
+          label="Completed"
+          value={loading ? "—" : stats?.completedSessions ?? 0}
+          icon={CheckCircle}
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
+          trend={{ direction: (stats?.completedSessions ?? 0) > 0 ? "up" : "neutral", label: "Sessions done" }}
+        />
+        <StatCard
+          label="Upcoming"
+          value={loading ? "—" : stats?.upcomingSessions ?? 0}
+          icon={Video}
+          iconBg="bg-orange-50"
+          iconColor="text-orange-500"
+          trend={{ direction: (stats?.upcomingSessions ?? 0) > 0 ? "up" : "neutral", label: "Scheduled" }}
+        />
+        <StatCard
+          label="Cancelled"
+          value={loading ? "—" : stats?.cancelledSessions ?? 0}
+          icon={Clock}
+          iconBg="bg-slate-100"
+          iconColor="text-slate-400"
+          trend={{ direction: "neutral", label: "Total cancelled" }}
+        />
+      </div>
+
+      {/* ── Main grid ── */}
+      <div className="grid gap-6 lg:grid-cols-3">
+
+        {/* ── Left/main: upcoming sessions ── */}
+        <div className="lg:col-span-2">
+          <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Upcoming Sessions</p>
+                <p className="text-xs text-slate-400 mt-0.5">Your next scheduled interviews</p>
+              </div>
+              <Link
+                href="/job-seeker/sessions"
+                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                View all <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {loading ? (
+                <div className="p-6 text-center text-sm text-slate-400">Loading sessions…</div>
+              ) : upcomingSessions.length === 0 ? (
+                <EmptyState
+                  icon={CalendarDays}
+                  title="No upcoming sessions"
+                  description="Find a verified interviewer and book your first mock session."
+                  action={{ label: "Browse Interviewers", href: "/job-seeker/interviewers" }}
+                />
+              ) : (
+                upcomingSessions.map((session) => {
+                  const { date, time } = formatDateTime(session.scheduledDate);
+                  const initials = `${session.interviewer.firstName[0]}${session.interviewer.lastName[0]}`.toUpperCase();
+                  return (
+                    <div key={session.id} className="p-5 hover:bg-slate-50/50 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700 select-none">
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900 flex items-center gap-1">
+                                {session.interviewer.firstName} {session.interviewer.lastName}
+                                {session.interviewer.isVerified && <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {session.interviewer.jobTitle} · {session.interviewer.currentCompany}
+                              </p>
+                            </div>
+                            <StatusBadge status={session.sessionStatus} />
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                            <span className="flex items-center gap-1">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              {date}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" />
+                              {time} · {session.duration} min
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
+                              {SESSION_TYPE_LABELS[session.sessionType] ?? session.sessionType}
+                            </span>
+                            <Link
+                              href="/job-seeker/sessions"
+                              className="inline-flex items-center rounded-full border border-slate-200 px-2.5 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                              Manage
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Right sidebar: recommended interviewers ── */}
+        <div className="space-y-6">
+          <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <p className="text-sm font-semibold text-slate-900">Recommended</p>
+              <Link
+                href="/job-seeker/interviewers"
+                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                Browse all <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {loading ? (
+                <div className="p-6 text-center text-sm text-slate-400">Loading…</div>
+              ) : recommendedInterviewers.length === 0 ? (
+                <EmptyState
+                  icon={Search}
+                  title="No interviewers found"
+                  description="Check back once more interviewers are verified."
+                />
+              ) : (
+                recommendedInterviewers.map((iv) => (
+                  <div key={iv.id} className="p-4 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700 select-none">
+                        {iv.firstName[0]}{iv.lastName[0]}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900 truncate flex items-center gap-1">
+                          {iv.firstName} {iv.lastName}
+                          {iv.isVerified && <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />}
+                        </p>
+                        <p className="text-xs text-slate-400 truncate">{iv.jobTitle}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <div className="flex items-center gap-0.5">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            <span className="text-xs font-semibold text-slate-700">
+                              {Number(iv.ratingAverage).toFixed(1)}
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-400">· {iv.totalInterviews} sessions</span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        <p className="text-xs font-semibold text-slate-900">LKR {Math.round(Number(iv.hourlyRate)).toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400">per session</p>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/job-seeker/interviewers/${iv.userId}`}
+                      className="mt-3 flex w-full items-center justify-center rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      Book Now
+                    </Link>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── CTA banner ── */}
+      <div className="rounded-xl border border-slate-200 bg-slate-900 p-6 text-white">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold">Preparing for a technical role?</h2>
+            <p className="mt-1 text-sm text-slate-300 max-w-lg">
+              We have verified experts across SE, QA, PM, DevOps, and more — ready to help you land your dream role.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {["Software Engineer", "Product Manager", "QA Engineer", "DevOps", "Data Engineer", "Tech Lead"].map((role) => (
+                <span key={role} className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">
+                  {role}
+                </span>
+              ))}
             </div>
           </div>
           <Link
-            href="/job-seeker/settings"
-            className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors shrink-0"
-          >
-            Complete Profile
-          </Link>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-4" style={{ marginBottom: "40px" }}>
-          <Link
             href="/job-seeker/interviewers"
-            className="flex items-center justify-center gap-2 bg-linear-to-r from-orange-500 to-orange-400 text-white py-3 rounded-xl font-medium hover:from-orange-600 hover:to-orange-500 transition-all text-sm"
+            className="inline-flex flex-shrink-0 items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-600"
           >
-            <Calendar className="w-4 h-4" />
-            Book Interview
+            Browse Interviewers
+            <ChevronRight className="h-4 w-4" />
           </Link>
-          <Link
-            href="/job-seeker/questions"
-            className="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors text-sm"
-          >
-            <Users className="w-4 h-4" />
-            Practice Questions
-          </Link>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-4 gap-5" style={{ marginBottom: "20px" }}>
-          <div className="border border-gray-200 rounded-xl p-5">
-            <CalendarDays className="w-5 h-5 text-blue-500 mb-3" />
-            <p className="text-2xl font-bold text-gray-900">
-              {loading ? "—" : stats?.totalSessions ?? 0}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Total Sessions</p>
-          </div>
-          <div className="border border-gray-200 rounded-xl p-5">
-            <Star className="w-5 h-5 text-yellow-400 mb-3" />
-            <p className="text-2xl font-bold text-gray-900">
-              {loading ? "—" : stats?.completedSessions ?? 0}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Completed</p>
-          </div>
-          <div className="border border-gray-200 rounded-xl p-5">
-            <Video className="w-5 h-5 text-green-500 mb-3" />
-            <p className="text-2xl font-bold text-gray-900">
-              {loading ? "—" : stats?.upcomingSessions ?? 0}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Upcoming Sessions</p>
-          </div>
-          <div className="border border-gray-200 rounded-xl p-5">
-            <Clock className="w-5 h-5 text-orange-500 mb-3" />
-            <p className="text-2xl font-bold text-gray-900">
-              {loading ? "—" : stats?.cancelledSessions ?? 0}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Cancelled</p>
-          </div>
         </div>
       </div>
 
-      {/* Upcoming Sessions Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Upcoming Sessions</h2>
-          <Link
-            href="/job-seeker/sessions"
-            className="text-blue-600 text-sm font-medium hover:text-blue-700 flex items-center gap-1"
-          >
-            View All <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-8 text-gray-400 text-sm">Loading sessions…</div>
-        ) : upcomingSessions.length === 0 ? (
-          <div className="text-center py-10">
-            <CalendarDays className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm mb-4">No upcoming sessions.</p>
-            <Link
-              href="/job-seeker/interviewers"
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-            >
-              <Calendar className="w-4 h-4" />
-              Book your first session
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {upcomingSessions.map((session, index) => (
-              <div
-                key={session.id}
-                className={`flex items-center justify-between pb-4 ${
-                  index !== upcomingSessions.length - 1 ? "border-b border-gray-100" : ""
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-linear-to-br from-blue-400 to-blue-600 shrink-0 flex items-center justify-center text-white font-semibold">
-                    {session.interviewer.firstName[0]}{session.interviewer.lastName[0]}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-1">
-                      {session.interviewer.firstName} {session.interviewer.lastName}
-                      {session.interviewer.isVerified && (
-                        <CheckCircle className="w-3.5 h-3.5 text-blue-500" />
-                      )}
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      {session.interviewer.jobTitle} at {session.interviewer.currentCompany}
-                    </p>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <CalendarDays className="w-3 h-3" />
-                        {formatDate(session.scheduledDate)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatTime(session.scheduledDate)} ({session.duration} min)
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        {SESSION_TYPE_LABELS[session.sessionType] || session.sessionType}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <span className="text-xs font-medium text-blue-600">IT & Software</span>
-                  <Link
-                    href="/job-seeker/sessions"
-                    className="px-4 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    Manage
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Recommended Interviewers Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Recommended for You</h2>
-          <Link
-            href="/job-seeker/interviewers"
-            className="text-blue-600 text-sm font-medium hover:text-blue-700 flex items-center gap-1"
-          >
-            Browse All <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-8 text-gray-400 text-sm">Loading interviewers…</div>
-        ) : recommendedInterviewers.length === 0 ? (
-          <div className="text-center py-10">
-            <Users className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm mb-4">No verified interviewers available yet.</p>
-            <Link
-              href="/job-seeker/interviewers"
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-            >
-              Browse Interviewers
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-5">
-            {recommendedInterviewers.map((interviewer) => (
-              <div
-                key={interviewer.id}
-                className="border border-gray-200 rounded-xl p-5 text-center"
-              >
-                <div className="w-20 h-20 rounded-full overflow-hidden bg-linear-to-br from-blue-400 to-blue-600 mx-auto mb-3 flex items-center justify-center text-white font-semibold text-xl">
-                  {interviewer.firstName[0]}{interviewer.lastName[0]}
-                </div>
-                <h3 className="font-semibold text-gray-900 flex items-center justify-center gap-1">
-                  {interviewer.firstName} {interviewer.lastName}
-                  {interviewer.isVerified && (
-                    <CheckCircle className="w-4 h-4 text-blue-500" />
-                  )}
-                </h3>
-                <p className="text-xs text-gray-500">{interviewer.jobTitle}</p>
-                <p className="text-xs text-blue-600 font-medium mt-0.5 flex items-center justify-center gap-1">
-                  <Briefcase className="w-3 h-3" />
-                  {interviewer.currentCompany}
-                </p>
-
-                <div className="flex items-center justify-center gap-2 mt-3 text-xs">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-orange-400 fill-orange-400" />
-                    <span className="font-semibold">{interviewer.ratingAverage.toFixed(1)}</span>
-                  </div>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-gray-500">{interviewer.totalInterviews} sessions</span>
-                </div>
-
-                <p className="text-base font-bold text-gray-900 mt-2">
-                  LKR {Math.round(interviewer.hourlyRate).toLocaleString()}
-                </p>
-
-                <Link
-                  href={`/job-seeker/interviewers/${interviewer.userId}`}
-                  className="block w-full mt-4 py-2.5 bg-linear-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-medium hover:from-blue-700 hover:to-blue-600 transition-all"
-                >
-                  Book Now
-                </Link>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* IT Roles CTA */}
-      <div className="bg-linear-to-r from-blue-600 to-blue-700 rounded-2xl p-8 text-white">
-        <h2 className="text-xl font-bold mb-2">Preparing for an IT Interview?</h2>
-        <p className="text-blue-100 mb-6">
-          We have verified experts across SE, QA, PM, DevOps and more — ready to help you land your dream role.
-        </p>
-        <div className="flex flex-wrap gap-2 mb-6">
-          {["Software Engineer", "Product Manager", "QA Engineer", "DevOps", "Data Engineer", "Tech Lead"].map((role) => (
-            <span
-              key={role}
-              className="px-3 py-1 bg-white/20 text-white rounded-full text-xs font-medium"
-            >
-              {role}
-            </span>
-          ))}
-        </div>
-        <Link
-          href="/job-seeker/interviewers"
-          className="inline-flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-colors"
-        >
-          Browse Verified Interviewers
-          <ChevronRight className="w-4 h-4" />
-        </Link>
-      </div>
     </div>
   );
 }

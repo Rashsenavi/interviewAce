@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { interviewerApi, sessionApi } from "@/lib/api";
 import Link from "next/link";
@@ -10,150 +10,125 @@ import {
   Star,
   Users,
   Video,
-  Phone,
-  RefreshCw,
   Clock,
   CheckCircle,
   AlertCircle,
   TrendingUp,
+  ArrowUpRight,
+  CalendarDays,
+  BookOpen,
 } from "lucide-react";
 
-// Mock data for the dashboard
-const upcomingSessions = [
-  {
-    id: 1,
-    candidateName: "Amaya Silva",
-    avatar: "AS",
-    avatarBg: "bg-purple-100",
-    avatarColor: "text-purple-600",
-    date: "Today",
-    time: "2:00 PM - 3:00 PM",
-    price: 5000,
-    status: "confirmed",
-    tags: ["Technical Interview", "Software Engineering"],
-    meetingLink: "https://zoom.us/j/123456789",
-  },
-  {
-    id: 2,
-    candidateName: "Ravindu Fernando",
-    avatar: "RF",
-    avatarBg: "bg-orange-100",
-    avatarColor: "text-orange-600",
-    date: "Tomorrow",
-    time: "10:00 AM - 11:30 AM",
-    price: 6000,
-    status: "confirmed",
-    tags: ["Mock Interview", "Product Management"],
-    meetingLink: "https://teams.microsoft.com/l/meetup-join/19%3ameeting_xyz",
-  },
-  {
-    id: 3,
-    candidateName: "Nisha Jayawardena",
-    avatar: "NJ",
-    avatarBg: "bg-blue-100",
-    avatarColor: "text-blue-600",
-    date: "Jan 18",
-    time: "4:00 PM - 5:00 PM",
-    price: 5000,
-    status: "pending",
-    tags: ["Behavioral Interview", "Marketing"],
-    meetingLink: "", // Not generated until confirmed
-  },
-];
+// ─── Session type display mapping ─────────────────────────────────────────────
+const SESSION_TYPE_LABELS: Record<string, string> = {
+  behavioral: "Behavioral",
+  technical: "Technical",
+  case_study: "Case Study",
+  mixed: "Mixed",
+};
 
-const recentSessions = [
-  {
-    id: 1,
-    candidateName: "Kasun Perera",
-    date: "Jan 14, 2026",
-    duration: "1h",
-    rating: 5,
-    earnings: 4000,
-    feedback: "Excellent interviewer! Very helpful and insightful.",
-  },
-  {
-    id: 2,
-    candidateName: "Sanduni Wickramasinghe",
-    date: "Jan 12, 2026",
-    duration: "1.5h",
-    rating: 5,
-    earnings: 6000,
-    feedback: "Great experience, learned a lot!",
-  },
-  {
-    id: 3,
-    candidateName: "Thilina Rajapaksa",
-    date: "Jan 10, 2026",
-    duration: "1h",
-    rating: 4,
-    earnings: 4000,
-    feedback: "Good feedback, very professional.",
-  },
-];
+// ─── Status badge helper ───────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; className: string }> = {
+    scheduled: { label: "Confirmed", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    rescheduled: { label: "Rescheduled", className: "bg-sky-50 text-sky-700 border-sky-200" },
+    pending: { label: "Pending", className: "bg-amber-50 text-amber-700 border-amber-200" },
+    awaiting_confirmation: { label: "Awaiting Confirmation", className: "bg-orange-50 text-orange-700 border-orange-200" },
+    in_progress: { label: "In Progress", className: "bg-teal-50 text-teal-700 border-teal-200" },
+    completed: { label: "Completed", className: "bg-slate-100 text-slate-600 border-slate-200" },
+    cancelled: { label: "Cancelled", className: "bg-red-50 text-red-600 border-red-200" },
+  };
+  const cfg = map[status] ?? { label: status, className: "bg-slate-100 text-slate-600 border-slate-200" };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${cfg.className}`}>
+      {cfg.label}
+    </span>
+  );
+}
 
+// ─── Stat card ─────────────────────────────────────────────────────────────────
+function StatCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  iconBg,
+  iconColor,
+  trend,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg: string;
+  iconColor: string;
+  trend?: { direction: "up" | "down" | "neutral"; label: string };
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-400">{label}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-900 truncate">{value}</p>
+          {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
+        </div>
+        <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+          <Icon className={`h-5 w-5 ${iconColor}`} />
+        </div>
+      </div>
+      {trend && (
+        <div className="mt-3 flex items-center gap-1">
+          <ArrowUpRight className={`h-3.5 w-3.5 ${trend.direction === "up" ? "text-emerald-500" : trend.direction === "down" ? "rotate-180 text-red-400" : "text-slate-400"}`} />
+          <span className={`text-xs font-medium ${trend.direction === "up" ? "text-emerald-600" : trend.direction === "down" ? "text-red-500" : "text-slate-500"}`}>
+            {trend.label}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Empty state ───────────────────────────────────────────────────────────────
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  action?: { label: string; href: string };
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 mb-4">
+        <Icon className="h-6 w-6 text-slate-400" />
+      </div>
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      <p className="mt-1 text-xs text-slate-400 max-w-xs">{description}</p>
+      {action && (
+        <Link
+          href={action.href}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
+        >
+          {action.label}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 export default function InterviewerDashboardPage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Make sessions stateful so the user can paste and save links during the demo
   const [sessions, setSessions] = useState<any[]>([]);
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   const [tempLink, setTempLink] = useState("");
 
-  const handleSaveLink = async (id: number) => {
-    try {
-      const res = await sessionApi.updateMeetingLink(id, tempLink);
-      if (res.success) {
-        setSessions(prev => 
-          prev.map(s => s.id === id ? { ...s, meetingLink: tempLink } : s)
-        );
-      } else {
-        alert(res.error?.message || "Failed to save meeting link");
-      }
-    } catch (error) {
-      console.error("Error saving meeting link:", error);
-      alert("An unexpected error occurred.");
-    } finally {
-      setEditingSessionId(null);
-      setTempLink("");
-    }
-  };
-
-  const handleAcceptSession = async (id: number) => {
-    try {
-      const res = await sessionApi.updateStatus(id, "scheduled");
-      if (res.success) {
-        await fetchDashboardData();
-        alert("Session accepted successfully!");
-      } else {
-        alert(res.error?.message || "Failed to accept session");
-      }
-    } catch (error) {
-      console.error("Error accepting session:", error);
-      alert("An unexpected error occurred.");
-    }
-  };
-
-  const handleDeclineSession = async (id: number) => {
-    const reason = prompt("Please enter a reason for declining this request (optional):");
-    if (reason === null) return;
-    
-    try {
-      const res = await sessionApi.updateStatus(id, "cancelled", reason || undefined);
-      if (res.success) {
-        await fetchDashboardData();
-        alert("Session declined.");
-      } else {
-        alert(res.error?.message || "Failed to decline session");
-      }
-    } catch (error) {
-      console.error("Error declining session:", error);
-      alert("An unexpected error occurred.");
-    }
-  };
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!user) return;
     try {
       const [profileRes, sessionsRes] = await Promise.all([
@@ -166,322 +141,268 @@ export default function InterviewerDashboardPage() {
       }
 
       if (sessionsRes.success && sessionsRes.data?.sessions) {
-        const sessionTypeLabels: Record<string, string> = {
-          behavioral: "Behavioral Interview",
-          technical: "Technical Interview",
-          case_study: "Case Study",
-          mixed: "Mixed Interview",
-        };
-
-        const backendSessions = sessionsRes.data.sessions.map((s: any) => {
-          const name = `${s.jobSeeker?.firstName || "Candidate"} ${s.jobSeeker?.lastName || ""}`;
-          const initials = `${s.jobSeeker?.firstName?.[0] || "C"}${s.jobSeeker?.lastName?.[0] || ""}`;
-          
-          return {
-            id: s.id,
-            candidateName: name,
-            avatar: initials,
-            avatarBg: "bg-teal-100",
-            avatarColor: "text-teal-600",
-            date: new Date(s.scheduledDate).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            }),
-            time: new Date(s.scheduledDate).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            duration: `${s.duration} min`,
-            price: parseFloat(s.priceAmount || "0"),
-            earnings: parseFloat(s.priceAmount || "0"),
-            status: s.sessionStatus,
-            tags: [sessionTypeLabels[s.sessionType] || s.sessionType],
-            meetingLink: s.meetingLink || "",
-            notes: s.notes || "",
-            rating: s.rating || 5,
-            feedback: s.feedback?.generalComments || s.feedback?.strengths || "Great session, no detailed written review left.",
-          };
-        });
-
-        setSessions(backendSessions);
+        const mapped = sessionsRes.data.sessions.map((s: any) => ({
+          id: s.id,
+          candidateName: `${s.jobSeeker?.firstName || "Candidate"} ${s.jobSeeker?.lastName || ""}`.trim(),
+          candidateInitials: `${s.jobSeeker?.firstName?.[0] ?? "C"}${s.jobSeeker?.lastName?.[0] ?? ""}`.toUpperCase(),
+          date: new Date(s.scheduledDate).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+          time: new Date(s.scheduledDate).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+          duration: `${s.duration} min`,
+          price: parseFloat(s.priceAmount || "0"),
+          status: s.sessionStatus,
+          sessionType: SESSION_TYPE_LABELS[s.sessionType] ?? s.sessionType,
+          meetingLink: s.meetingLink || "",
+          notes: s.notes || "",
+          feedback: s.feedback?.generalComments || s.feedback?.strengths || "",
+        }));
+        setSessions(mapped);
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [user]);
+  }, [fetchDashboardData]);
 
-  const userName = user?.firstName || "";
+  const handleSaveLink = async (id: number) => {
+    try {
+      const res = await sessionApi.updateMeetingLink(id, tempLink);
+      if (res.success) {
+        setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, meetingLink: tempLink } : s)));
+      } else {
+        alert(res.error?.message || "Failed to save meeting link");
+      }
+    } catch {
+      alert("An unexpected error occurred.");
+    } finally {
+      setEditingSessionId(null);
+      setTempLink("");
+    }
+  };
 
+  const handleAcceptSession = async (id: number) => {
+    try {
+      const res = await sessionApi.updateStatus(id, "scheduled");
+      if (res.success) {
+        await fetchDashboardData();
+      } else {
+        alert(res.error?.message || "Failed to accept session");
+      }
+    } catch {
+      alert("An unexpected error occurred.");
+    }
+  };
+
+  const handleDeclineSession = async (id: number) => {
+    const reason = prompt("Please enter a reason for declining (optional):");
+    if (reason === null) return;
+    try {
+      const res = await sessionApi.updateStatus(id, "cancelled", reason || undefined);
+      if (res.success) {
+        await fetchDashboardData();
+      } else {
+        alert(res.error?.message || "Failed to decline session");
+      }
+    } catch {
+      alert("An unexpected error occurred.");
+    }
+  };
+
+  // ── Loading state ──
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-gray-500">Loading your dashboard...</p>
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <div className="h-8 w-8 rounded-full border-[3px] border-orange-500 border-t-transparent animate-spin" />
+        <p className="text-sm text-slate-400">Loading your dashboard…</p>
       </div>
     );
   }
 
-  const upcomingList = sessions.filter(
-    (s) =>
-      s.status === "pending" ||
-      s.status === "scheduled" ||
-      s.status === "rescheduled" ||
-      s.status === "in_progress" ||
-      s.status === "awaiting_confirmation"
+  const upcomingList = sessions.filter((s) =>
+    ["pending", "scheduled", "rescheduled", "in_progress", "awaiting_confirmation"].includes(s.status)
   );
   const completedList = sessions.filter((s) => s.status === "completed");
+  const totalEarnings = Number(profile?.totalEarnings || 0);
+  const rating = Number(profile?.ratingAverage || 0);
 
-  return (
-    <div className="w-full">
-      {/* Welcome Section */}
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">
-        Welcome back, {userName}! 👋
-      </h1>
-
-      {/* Verification Gating */}
-      {!profile?.isVerified ? (
-        profile?.verificationStatus === "rejected" ? (
-          <div className="max-w-3xl mt-4">
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
-              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-red-900 mb-2">Action Required</h2>
-              <p className="text-red-700 mb-6">Your interviewer application requires your attention before we can approve it.</p>
-              
-              <div className="bg-white rounded-xl p-6 text-left border border-red-100 shadow-sm mb-6 max-w-xl mx-auto">
-                <h3 className="font-semibold text-gray-900 mb-2">Admin Feedback:</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{profile.verificationNotes || "Please review your documents and ensure they meet our requirements."}</p>
+  // ── Verification gate ──
+  if (!profile?.isVerified) {
+    return (
+      <div className="max-w-xl mt-4">
+        {profile?.verificationStatus === "rejected" ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-red-900 mb-2">Action Required</h2>
+            <p className="text-sm text-red-700 mb-5">
+              Your application requires attention before we can approve it.
+            </p>
+            {profile.verificationNotes && (
+              <div className="rounded-xl bg-white border border-red-100 p-4 text-left mb-5 text-sm text-slate-700">
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Admin Feedback</p>
+                <p className="whitespace-pre-wrap">{profile.verificationNotes}</p>
               </div>
-
-              <p className="text-sm text-red-600 mb-6">Please contact support or re-upload your documents through your profile settings.</p>
-              <Link href="/interviewer/profile" className="inline-block bg-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-red-700 transition">
-                Update Documents
-              </Link>
-            </div>
+            )}
+            <Link
+              href="/interviewer/profile"
+              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+            >
+              Update Documents
+            </Link>
           </div>
         ) : (
-          <div className="max-w-3xl mt-4">
-            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-8 text-center">
-              <Clock className="w-16 h-16 text-indigo-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-indigo-900 mb-2">Reviewing Your Documents</h2>
-              <p className="text-indigo-700 max-w-lg mx-auto mb-6">
-                Thank you for joining InterviewAce! Our team is currently reviewing your professional documents. This usually takes 1-2 business days.
-              </p>
-              <p className="text-sm text-indigo-600/80">
-                We will notify you via email once your account is verified. In the meantime, you can review your profile.
-              </p>
-              <div className="mt-6">
-                <Link href="/interviewer/profile" className="inline-block bg-white text-indigo-700 border border-indigo-200 px-6 py-2 rounded-xl font-semibold hover:bg-indigo-50 transition">
-                  View Profile
-                </Link>
-              </div>
-            </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+            <Clock className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Reviewing Your Documents</h2>
+            <p className="text-sm text-slate-500 max-w-sm mx-auto mb-5">
+              Thank you for joining InterviewAce! Our team is reviewing your professional documents.
+              This usually takes 1–2 business days.
+            </p>
+            <Link
+              href="/interviewer/profile"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              View Profile
+            </Link>
           </div>
-        )
-      ) : (
-        <>
+        )}
+      </div>
+    );
+  }
 
+  return (
+    <div className="space-y-8">
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-6 mb-10">
-        {/* This Month Earnings */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 mb-2">Total Earnings</p>
-              <p className="text-2xl font-bold text-gray-900 truncate">
-                LKR {Number(profile?.totalEarnings || 0).toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-400 mt-2">Lifetime earnings</p>
-            </div>
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-              <DollarSign size={22} className="text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Upcoming Sessions */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 mb-2">Active Status</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {profile?.isVerified ? "Verified" : "Pending"}
-              </p>
-              <p className="text-xs text-teal-600 mt-2">
-                {profile?.isVerified ? "Ready for bookings" : "Waiting for approval"}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-              <Calendar size={22} className="text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Average Rating */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 mb-2">Average Rating</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {Number(profile?.ratingAverage || 0).toFixed(1)}
-              </p>
-              <p className="text-xs text-gray-400 mt-2">Based on reviews</p>
-            </div>
-            <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center shrink-0">
-              <Star size={22} className="text-yellow-500" />
-            </div>
-          </div>
-        </div>
-
-        {/* Total Sessions */}
-        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-500 mb-2">Total Sessions</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {profile?.totalInterviews || "0"}
-              </p>
-              <p className="text-xs text-gray-400 mt-2">Completed interviews</p>
-            </div>
-            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
-              <Users size={22} className="text-purple-600" />
-            </div>
-          </div>
-        </div>
+      {/* ── Stat cards ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Total Earnings"
+          value={`LKR ${totalEarnings.toLocaleString()}`}
+          sub="All time"
+          icon={DollarSign}
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
+          trend={{ direction: "up", label: "Lifetime earnings" }}
+        />
+        <StatCard
+          label="Upcoming"
+          value={upcomingList.length}
+          sub="Sessions scheduled"
+          icon={CalendarDays}
+          iconBg="bg-sky-50"
+          iconColor="text-sky-600"
+          trend={{ direction: upcomingList.length > 0 ? "up" : "neutral", label: upcomingList.length > 0 ? `${upcomingList.filter(s => s.status === "pending").length} pending review` : "No upcoming sessions" }}
+        />
+        <StatCard
+          label="Rating"
+          value={rating > 0 ? rating.toFixed(1) : "—"}
+          sub="Average from reviews"
+          icon={Star}
+          iconBg="bg-amber-50"
+          iconColor="text-amber-500"
+          trend={{ direction: rating >= 4 ? "up" : "neutral", label: rating >= 4 ? "High performer" : "Building reputation" }}
+        />
+        <StatCard
+          label="Completed"
+          value={profile?.totalInterviews || "0"}
+          sub="Total sessions"
+          icon={Users}
+          iconBg="bg-orange-50"
+          iconColor="text-orange-500"
+          trend={{ direction: "neutral", label: `${completedList.length} this sync` }}
+        />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-3 gap-8">
-        {/* Left Column - Sessions */}
-        <div className="col-span-2 space-y-8">
-          {/* Upcoming Sessions */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Upcoming Sessions</h2>
+      {/* ── Main grid ── */}
+      <div className="grid gap-6 lg:grid-cols-3">
+
+        {/* ── Left: sessions ── */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* Upcoming sessions */}
+          <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Upcoming Sessions</p>
+                <p className="text-xs text-slate-400 mt-0.5">{upcomingList.length} sessions scheduled or pending</p>
+              </div>
               <Link
                 href="/interviewer/schedule"
-                className="text-sm text-gray-600 hover:text-gray-900 border border-gray-300 px-4 py-2 rounded-lg"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
               >
+                <Calendar className="h-3.5 w-3.5" />
                 Manage Schedule
               </Link>
             </div>
 
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-slate-100">
               {upcomingList.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  No upcoming sessions or pending requests.
-                </div>
+                <EmptyState
+                  icon={CalendarDays}
+                  title="No upcoming sessions"
+                  description="Update your availability to start receiving booking requests."
+                  action={{ label: "Set Availability", href: "/interviewer/schedule" }}
+                />
               ) : (
                 upcomingList.map((session) => (
-                  <div key={session.id} className="p-6">
-                    <div className="flex items-start gap-4">
+                  <div key={session.id} className="p-5 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-start gap-3">
                       {/* Avatar */}
-                      <div
-                        className={`w-12 h-12 ${session.avatarBg} rounded-full flex items-center justify-center shrink-0`}
-                      >
-                        <span className={`font-semibold ${session.avatarColor}`}>
-                          {session.avatar}
-                        </span>
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700 select-none">
+                        {session.candidateInitials}
                       </div>
 
-                      {/* Details */}
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
                           <div>
-                            <h3 className="font-semibold text-gray-900">
-                              {session.candidateName}
-                            </h3>
-                            <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                            <p className="text-sm font-semibold text-slate-900">{session.candidateName}</p>
+                            <div className="mt-0.5 flex items-center gap-3 text-xs text-slate-400">
                               <span className="flex items-center gap-1">
-                                <Calendar size={14} />
+                                <Calendar className="h-3.5 w-3.5" />
                                 {session.date}
                               </span>
                               <span className="flex items-center gap-1">
-                                <Clock size={14} />
-                                {session.time}
+                                <Clock className="h-3.5 w-3.5" />
+                                {session.time} · {session.duration}
                               </span>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-teal-600">
-                              LKR {session.price.toLocaleString()}
-                            </p>
-                            <span
-                              className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full mt-1 ${
-                                session.status === "scheduled" || session.status === "rescheduled"
-                                  ? "bg-green-50 text-green-600"
-                                  : session.status === "pending"
-                                  ? "bg-yellow-50 text-yellow-600"
-                                  : session.status === "awaiting_confirmation"
-                                  ? "bg-amber-50 text-amber-600 animate-pulse font-medium"
-                                  : "bg-orange-50 text-orange-600"
-                              }`}
-                            >
-                              {session.status === "scheduled" || session.status === "rescheduled" ? (
-                                <CheckCircle size={12} />
-                              ) : (
-                                <AlertCircle size={12} />
-                              )}
-                              {session.status === "scheduled" || session.status === "rescheduled"
-                                ? "Confirmed"
-                                : session.status === "pending"
-                                ? "Pending Booking"
-                                : session.status === "awaiting_confirmation"
-                                ? "Awaiting Occurrence"
-                                : session.status}
-                            </span>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-semibold text-emerald-600">LKR {session.price.toLocaleString()}</p>
+                            <div className="mt-1"><StatusBadge status={session.status} /></div>
                           </div>
+                        </div>
+
+                        {/* Session type tag */}
+                        <div className="mt-2">
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
+                            {session.sessionType}
+                          </span>
                         </div>
 
                         {/* Notes */}
                         {session.notes && (
-                          <div className="bg-yellow-50 rounded-lg p-3 mb-3 text-sm text-yellow-800">
-                            <strong>Candidate Note:</strong> {session.notes}
+                          <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-800">
+                            <strong>Candidate note:</strong> {session.notes}
                           </div>
                         )}
 
-                        {/* Tags */}
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          {session.tags.map((tag: any, i: number) => (
-                            <span
-                              key={i}
-                              className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-
                         {/* Actions */}
-                        <div className="flex items-center gap-2">
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
                           {session.status === "awaiting_confirmation" ? (
-                            <div className="flex flex-col gap-2 w-full bg-amber-50 border border-amber-100 rounded-lg p-4 my-2">
-                              <p className="text-xs font-semibold text-amber-900">
-                                Did this session take place?
-                              </p>
+                            <div className="flex flex-col gap-2 w-full rounded-lg bg-amber-50 border border-amber-100 p-3">
+                              <p className="text-xs font-semibold text-amber-900">Did this session take place?</p>
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={async () => {
-                                    try {
-                                      const res = await sessionApi.confirm(session.id, true);
-                                      if (res.success) {
-                                        alert("Session occurrence confirmed!");
-                                        await fetchDashboardData();
-                                      } else {
-                                        alert(res.error?.message || "Failed to confirm session");
-                                      }
-                                    } catch (e) {
-                                      alert("An error occurred");
-                                    }
+                                    const res = await sessionApi.confirm(session.id, true);
+                                    if (res.success) fetchDashboardData();
+                                    else alert(res.error?.message || "Failed to confirm");
                                   }}
-                                  className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-md text-xs font-medium"
+                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700"
                                 >
                                   Yes, it happened
                                 </button>
@@ -489,19 +410,11 @@ export default function InterviewerDashboardPage() {
                                   onClick={async () => {
                                     const reason = prompt("Describe what issue occurred:");
                                     if (reason === null) return;
-                                    try {
-                                      const res = await sessionApi.confirm(session.id, false, reason || undefined);
-                                      if (res.success) {
-                                        alert("Session occurrence disputed!");
-                                        await fetchDashboardData();
-                                      } else {
-                                        alert(res.error?.message || "Failed to dispute session");
-                                      }
-                                    } catch (e) {
-                                      alert("An error occurred");
-                                    }
+                                    const res = await sessionApi.confirm(session.id, false, reason || undefined);
+                                    if (res.success) fetchDashboardData();
+                                    else alert(res.error?.message || "Failed to dispute");
                                   }}
-                                  className="border border-red-200 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-md text-xs font-medium"
+                                  className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50"
                                 >
                                   No, report issue
                                 </button>
@@ -511,13 +424,13 @@ export default function InterviewerDashboardPage() {
                             <>
                               <button
                                 onClick={() => handleAcceptSession(session.id)}
-                                className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                                className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
                               >
                                 Accept Request
                               </button>
                               <button
                                 onClick={() => handleDeclineSession(session.id)}
-                                className="border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-medium"
+                                className="rounded-lg border border-red-200 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-50"
                               >
                                 Decline
                               </button>
@@ -525,52 +438,49 @@ export default function InterviewerDashboardPage() {
                           ) : (
                             <>
                               {session.meetingLink ? (
-                                <a 
+                                <a
                                   href={session.meetingLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-700"
                                 >
-                                  <Video size={16} />
+                                  <Video className="h-3.5 w-3.5" />
                                   Join Session
                                 </a>
                               ) : editingSessionId === session.id ? (
                                 <div className="flex items-center gap-2">
-                                  <input 
+                                  <input
                                     type="url"
-                                    placeholder="Paste meet link here..."
+                                    placeholder="Paste meeting link…"
                                     value={tempLink}
                                     onChange={(e) => setTempLink(e.target.value)}
-                                    className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                     autoFocus
                                   />
-                                  <button 
+                                  <button
                                     onClick={() => handleSaveLink(session.id)}
-                                    className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium"
+                                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
                                   >
                                     Save
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => { setEditingSessionId(null); setTempLink(""); }}
-                                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium"
+                                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
                                   >
                                     Cancel
                                   </button>
                                 </div>
                               ) : (
-                                <button 
+                                <button
                                   onClick={() => { setEditingSessionId(session.id); setTempLink(""); }}
-                                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition"
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
                                 >
-                                  <Video size={16} />
+                                  <Video className="h-3.5 w-3.5" />
                                   + Add Meet Link
                                 </button>
                               )}
                             </>
                           )}
-                          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
-                            Contact
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -580,159 +490,151 @@ export default function InterviewerDashboardPage() {
             </div>
           </div>
 
-          {/* Recent Sessions */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Recent Sessions</h2>
-              <p className="text-sm text-gray-500 mt-2">
-                Your completed sessions and feedback
-              </p>
+          {/* Recent / completed sessions */}
+          <div className="rounded-xl border border-slate-200 bg-white">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <p className="text-sm font-semibold text-slate-900">Recent Sessions</p>
+              <p className="text-xs text-slate-400 mt-0.5">Completed interviews and feedback</p>
             </div>
 
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-slate-100">
               {completedList.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  No recent completed sessions.
-                </div>
+                <EmptyState
+                  icon={CheckCircle}
+                  title="No completed sessions yet"
+                  description="Once you complete sessions, they'll appear here with candidate feedback."
+                />
               ) : (
-                completedList.map((session) => (
-                  <div key={session.id} className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {session.candidateName}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {session.date} • {session.duration}
-                        </p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-yellow-400">🏆</span>
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              size={14}
-                              className={
-                                i < session.rating
-                                  ? "text-yellow-400 fill-yellow-400"
-                                  : "text-gray-300"
-                              }
-                            />
-                          ))}
-                          <span className="text-sm text-gray-500 ml-1">
-                            ({session.rating}/5)
-                          </span>
-                        </div>
+                completedList.slice(0, 5).map((session) => (
+                  <div key={session.id} className="p-5 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500 select-none">
+                        {session.candidateInitials}
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-teal-600">
-                          +LKR {session.earnings.toLocaleString()}
-                        </p>
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-green-50 text-green-600 rounded-full mt-1">
-                          <CheckCircle size={12} />
-                          Completed
-                        </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{session.candidateName}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{session.date} · {session.duration}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm font-semibold text-emerald-600">+LKR {session.price.toLocaleString()}</p>
+                            <StatusBadge status={session.status} />
+                          </div>
+                        </div>
+                        {session.feedback && (
+                          <p className="mt-2 text-xs text-slate-500 italic">"{session.feedback}"</p>
+                        )}
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600 italic">"{session.feedback}"</p>
                   </div>
                 ))
               )}
             </div>
+
+            {completedList.length > 5 && (
+              <div className="px-5 py-3 border-t border-slate-100">
+                <Link href="/interviewer/sessions" className="text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors">
+                  View all {completedList.length} sessions →
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right Column - Quick Actions, Performance, Earnings */}
-        <div className="space-y-8">
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-5">Quick Actions</h3>
-            <div className="space-y-4">
+        {/* ── Right: quick actions + performance ── */}
+        <div className="space-y-6">
+
+          {/* Quick actions */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Quick Actions</p>
+            <div className="space-y-2">
               <Link
                 href="/interviewer/schedule"
-                className="flex items-center gap-3 w-full bg-teal-600 hover:bg-teal-700 text-white px-5 py-3.5 rounded-lg text-sm font-medium"
+                className="flex items-center gap-3 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
               >
-                <Calendar size={18} />
+                <Calendar className="h-4 w-4" />
                 Update Availability
               </Link>
               <Link
-                href="/interviewer/profile"
-                className="flex items-center gap-3 w-full border border-gray-300 text-gray-700 hover:bg-gray-50 px-5 py-3.5 rounded-lg text-sm font-medium"
+                href="/interviewer/earnings"
+                className="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
-                <Users size={18} />
-                Update Profile
+                <DollarSign className="h-4 w-4 text-slate-400" />
+                View Earnings
               </Link>
               <Link
-                href="/interviewer/earnings"
-                className="flex items-center gap-3 w-full border border-gray-300 text-gray-700 hover:bg-gray-50 px-5 py-3.5 rounded-lg text-sm font-medium"
+                href="/interviewer/questions"
+                className="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
-                <DollarSign size={18} />
-                View Earnings
+                <BookOpen className="h-4 w-4 text-slate-400" />
+                Question Bank
               </Link>
             </div>
           </div>
 
           {/* Performance */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-5">Performance</h3>
-            <div className="space-y-5">
-              <div>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-600">Session Completion</span>
-                  <span className="font-semibold text-gray-900">96%</span>
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Performance</p>
+            <div className="space-y-4">
+              {[
+                {
+                  label: "Session Completion",
+                  value: completedList.length > 0 ? Math.round((completedList.length / sessions.filter(s => !["pending"].includes(s.status)).length) * 100) || 100 : 100,
+                  color: "bg-emerald-500",
+                },
+                {
+                  label: "Candidate Satisfaction",
+                  value: rating > 0 ? Math.round((rating / 5) * 100) : 0,
+                  color: "bg-amber-400",
+                },
+                {
+                  label: "Profile Completeness",
+                  value: profile?.bio && profile?.linkedinProfile && profile?.hourlyRate ? 100 : 65,
+                  color: "bg-sky-500",
+                },
+              ].map((bar) => (
+                <div key={bar.label}>
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="text-slate-500">{bar.label}</span>
+                    <span className="font-semibold text-slate-700">{bar.value}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${bar.color} transition-all duration-700`}
+                      style={{ width: `${bar.value}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full w-[96%] bg-green-500 rounded-full"></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-600">Avg Response Time</span>
-                  <span className="font-semibold text-gray-900">2h</span>
-                </div>
-                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full w-[40%] bg-blue-500 rounded-full"></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-gray-600">Candidate Satisfaction</span>
-                  <span className="font-semibold text-gray-900">4.8/5.0</span>
-                </div>
-                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full w-[96%] bg-yellow-500 rounded-full"></div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Earnings Overview */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h3 className="font-semibold text-gray-900 mb-5">Earnings Overview</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-600">Total Earnings</span>
-                <span className="font-bold text-gray-900">LKR 245,000</span>
+          {/* Earnings summary */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-4">Earnings</p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-500">Total lifetime</span>
+                <span className="text-sm font-semibold text-slate-900">LKR {totalEarnings.toLocaleString()}</span>
               </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-600">This Month</span>
-                <span className="font-bold text-green-600">LKR 85,000</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-500">Sessions done</span>
+                <span className="text-sm font-semibold text-slate-900">{profile?.totalInterviews || 0}</span>
               </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-600">Pending Payout</span>
-                <span className="font-bold text-red-500">LKR 24,000</span>
+              <div className="border-t border-slate-100 pt-3">
+                <Link
+                  href="/interviewer/earnings"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Full Earnings Report
+                </Link>
               </div>
-
-              <button className="w-full mt-4 border border-gray-300 text-gray-700 hover:bg-gray-50 px-5 py-3 rounded-lg text-sm font-medium">
-                Request Payout
-              </button>
             </div>
           </div>
         </div>
       </div>
-      </>
-      )}
     </div>
   );
 }

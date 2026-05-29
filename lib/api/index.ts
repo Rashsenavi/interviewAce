@@ -540,8 +540,18 @@ export const videoApi = {
     return apiClient.post<{ video: any }>(`/videos/${id}/approve`);
   },
 
-  rejectVideo: async (id: number) => {
+    rejectVideo: async (id: number) => {
     return apiClient.post<{ video: any }>(`/videos/${id}/reject`);
+  },
+};
+
+// Public API (no auth required — for landing page)
+export const publicApi = {
+  getInterviewers: async () => {
+    return apiClient.get<{ interviewers: any[] }>("/public/interviewers");
+  },
+  getTestimonials: async () => {
+    return apiClient.get<{ testimonials: any[] }>("/public/testimonials");
   },
 };
 
