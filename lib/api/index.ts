@@ -425,6 +425,33 @@ export const questionApi = {
       qs ? `/questions?${qs}` : "/questions"
     );
   },
+
+  create: async (data: {
+    industryId: number;
+    questionText: string;
+    questionType: string;
+    difficultyLevel: string;
+    sampleAnswer?: string;
+    tips?: string;
+  }) => {
+    return apiClient.post<{ question: any }>("/questions", data);
+  },
+
+  getMyContributions: async () => {
+    return apiClient.get<{ questions: any[] }>("/questions/my");
+  },
+
+  getIndustries: async () => {
+    return apiClient.get<{ industries: any[] }>("/questions/industries");
+  },
+
+  getPendingQuestions: async () => {
+    return apiClient.get<{ questions: any[] }>("/questions/admin/pending");
+  },
+
+  reviewQuestion: async (id: number, status: "approved" | "rejected") => {
+    return apiClient.put<{ question: any }>(`/questions/${id}/review`, { status });
+  },
 };
 
 // Admin API

@@ -346,6 +346,7 @@ export const questionBank = pgTable("question_bank", {
   usageCount: integer("usage_count").default(0),
   isApproved: boolean("is_approved").default(false),
   approvedByAdminId: integer("approved_by_admin_id").references(() => admins.id),
+  status: varchar("status", { length: 50 }).notNull().default("pending"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });

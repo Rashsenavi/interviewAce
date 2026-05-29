@@ -17,9 +17,7 @@ export default function RootLayout({
       <body className="antialiased">
         <AuthProvider>{children}</AuthProvider>
         <Script 
-          src={process.env.NEXT_PUBLIC_PAYHERE_SANDBOX === "true" 
-            ? "https://sandbox.payhere.lk/lib/payhere.js" 
-            : "https://www.payhere.lk/lib/payhere.js"} 
+          src="https://www.payhere.lk/lib/payhere.js"
           strategy="beforeInteractive" 
         />
       </body>

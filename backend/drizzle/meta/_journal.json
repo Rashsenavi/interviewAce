@@ -17,6 +17,13 @@
       "when": 1780036749165,
       "tag": "0001_omniscient_sleeper",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1780046561653,
+      "tag": "0002_elite_butterfly",
+      "breakpoints": true
     }
   ]
 }

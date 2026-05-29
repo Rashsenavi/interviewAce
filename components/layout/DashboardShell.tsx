@@ -50,6 +50,7 @@ const roleConfig: Record<
       { label: "Payouts", href: "/admin/payouts", icon: DollarSign },
       { label: "Support Inbox", href: "/admin/support", icon: MessageSquare },
       { label: "Video Moderation", href: "/admin/videos", icon: Video },
+      { label: "Question Review", href: "/admin/questions", icon: HelpCircle },
     ],
   },
   interviewer: {
@@ -62,6 +63,7 @@ const roleConfig: Record<
       { label: "Sessions", href: "/interviewer/sessions", icon: Video },
       { label: "Earnings", href: "/interviewer/earnings", icon: DollarSign },
       { label: "Feedback", href: "/interviewer/feedback", icon: MessageSquare },
+      { label: "Question Bank", href: "/interviewer/questions", icon: HelpCircle },
       { label: "Support", href: "/interviewer/support", icon: HelpCircle },
     ],
   },
