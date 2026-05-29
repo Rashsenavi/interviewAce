@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import * as sessionService from "../services/session.service";
 import { z } from "zod";
+import { db } from "../config/database";
+import { interviewSessions, interviewers } from "../db/schema";
+import { eq, and } from "drizzle-orm";
 
 // Validation schemas
 const createSessionSchema = z.object({
@@ -318,6 +321,127 @@ export const rescheduleSession = async (req: Request, res: Response) => {
   }
 };
 
+const confirmSessionSchema = z.object({
+  occurred: z.boolean(),
+  issueReason: z.string().optional(),
+});
+
+/**
+ * PUT /api/sessions/:id/confirm
+ * Interviewer confirms if the session occurred or disputes it
+ */
+export const confirmSession = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: { code: "NOT_AUTHENTICATED", message: "User not authenticated" },
+    });
+  }
+
+  const sessionId = parseInt(req.params.id);
+  if (isNaN(sessionId)) {
+    return res.status(400).json({
+      success: false,
+      error: { code: "INVALID_ID", message: "Invalid session ID" },
+    });
+  }
+
+  try {
+    const { occurred, issueReason } = confirmSessionSchema.parse(req.body);
+
+    // 1. Fetch session to verify it exists
+    const [session] = await db
+      .select()
+      .from(interviewSessions)
+      .where(eq(interviewSessions.id, sessionId))
+      .limit(1);
+
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        error: { code: "SESSION_NOT_FOUND", message: "Session not found" },
+      });
+    }
+
+    // 2. Ownership check: verify interviewer assigned matches the logged-in user
+    const [interviewerProfile] = await db
+      .select({ id: interviewers.id })
+      .from(interviewers)
+      .where(eq(interviewers.userId, req.user.id))
+      .limit(1);
+
+    if (!interviewerProfile) {
+      return res.status(403).json({
+        success: false,
+        error: { code: "INTERVIEWER_PROFILE_NOT_FOUND", message: "Interviewer profile not found" },
+      });
+    }
+
+    if (session.interviewerId !== interviewerProfile.id) {
+      return res.status(403).json({
+        success: false,
+        error: { code: "UNAUTHORIZED_CONFIRMATION", message: "You are not assigned to this session" },
+      });
+    }
+
+    // 3. Status check: must be awaiting_confirmation
+    if (session.sessionStatus !== "awaiting_confirmation") {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_SESSION_STATE", message: "Session is not awaiting confirmation" },
+      });
+    }
+
+    if (occurred) {
+      // Mark completed
+      await db
+        .update(interviewSessions)
+        .set({
+          sessionStatus: "completed",
+          updatedAt: new Date(),
+        })
+        .where(eq(interviewSessions.id, sessionId));
+
+      return res.json({
+        success: true,
+        message: "Session marked as completed.",
+      });
+    } else {
+      // Flag as disputed
+      await db
+        .update(interviewSessions)
+        .set({
+          sessionStatus: "disputed",
+          disputeReason: issueReason || "Interviewer reported session did not occur.",
+          disputedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(interviewSessions.id, sessionId));
+
+      return res.json({
+        success: true,
+        message: "Session flagged. Admin will review.",
+      });
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid input data",
+          details: error.errors,
+        },
+      });
+    }
+    console.error("Error in confirmSession:", error);
+    return res.status(500).json({
+      success: false,
+      error: { code: "SERVER_ERROR", message: "Failed to confirm session" },
+    });
+  }
+};
+
 export default {
   createSession,
   getSessions,
@@ -326,4 +450,5 @@ export default {
   updateMeetingLink,
   getSessionStats,
   rescheduleSession,
+  confirmSession,
 };

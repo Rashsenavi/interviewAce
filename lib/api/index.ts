@@ -294,6 +294,10 @@ export const sessionApi = {
   reschedule: async (id: number, newScheduledDate: string) => {
     return apiClient.post<{ session: any }>(`/sessions/${id}/reschedule`, { newScheduledDate });
   },
+
+  confirm: async (id: number, occurred: boolean, issueReason?: string) => {
+    return apiClient.put<{ message: string }>(`/sessions/${id}/confirm`, { occurred, issueReason });
+  },
 };
 
 // Feedback API

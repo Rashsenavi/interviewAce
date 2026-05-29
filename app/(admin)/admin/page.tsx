@@ -16,7 +16,7 @@ type PendingInterviewer = {
 
 interface AnalyticsData {
   users: { total: number; jobSeekers: number; interviewers: number; activeInterviewers: number };
-  sessions: { total: number; completed: number; cancelled: number };
+  sessions: { total: number; completed: number; cancelled: number; disputed?: number; awaitingConfirmation?: number };
   financials: { totalRevenue: number; platformRevenue: number; interviewerPayouts: number };
   recentBookings: Array<{
     id: number;
@@ -217,8 +217,22 @@ export default function AdminDashboardPage() {
                   color="bg-rose-500" 
                 />
                 <ProgressRow 
+                  label="Disputed (Needs Action)" 
+                  value={analytics.sessions.disputed || 0} 
+                  total={analytics.sessions.total} 
+                  icon={AlertCircle} 
+                  color="bg-red-500 animate-pulse font-semibold" 
+                />
+                <ProgressRow 
+                  label="Awaiting Confirmation" 
+                  value={analytics.sessions.awaitingConfirmation || 0} 
+                  total={analytics.sessions.total} 
+                  icon={Clock3} 
+                  color="bg-amber-500" 
+                />
+                <ProgressRow 
                   label="Pending/Scheduled" 
-                  value={analytics.sessions.total - analytics.sessions.completed - analytics.sessions.cancelled} 
+                  value={analytics.sessions.total - analytics.sessions.completed - analytics.sessions.cancelled - (analytics.sessions.disputed || 0) - (analytics.sessions.awaitingConfirmation || 0)} 
                   total={analytics.sessions.total} 
                   icon={TrendingUp} 
                   color="bg-blue-500" 
@@ -279,7 +293,12 @@ export default function AdminDashboardPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 capitalize">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${
+                          session.sessionStatus === "disputed"
+                            ? "bg-red-100 text-red-700 border border-red-200"
+                            : "bg-slate-100 text-slate-700"
+                        }`}>
+                          {session.sessionStatus === "disputed" && <AlertCircle className="w-3 h-3 text-red-600" />}
                           {session.sessionStatus.replace("_", " ")}
                         </span>
                         <p className="mt-1 text-xs text-slate-500">

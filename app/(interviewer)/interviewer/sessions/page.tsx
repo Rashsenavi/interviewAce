@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { UploadVideoModal } from "./components/UploadVideoModal";
 
-type SessionStatus = "upcoming" | "completed" | "cancelled" | "pending";
+type SessionStatus = "upcoming" | "completed" | "cancelled" | "pending" | "awaiting_confirmation" | "disputed";
 
 interface Session {
   id: string;
@@ -115,6 +115,12 @@ export default function InterviewerSessionsPage() {
             status = "completed";
           } else if (s.sessionStatus === "cancelled" || s.sessionStatus === "no_show") {
             status = "cancelled";
+          } else if (s.sessionStatus === "awaiting_confirmation") {
+            status = "awaiting_confirmation";
+          } else if (s.sessionStatus === "disputed") {
+            status = "disputed";
+          } else if (s.sessionStatus === "scheduled" || s.sessionStatus === "rescheduled" || s.sessionStatus === "in_progress") {
+            status = "upcoming";
           }
 
           const scheduledDate = new Date(s.scheduledDate);
@@ -204,16 +210,16 @@ export default function InterviewerSessionsPage() {
       session.candidateUniversity.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (activeTab === "upcoming") {
-      return (session.status === "upcoming" || session.status === "pending") && matchesSearch;
+      return (session.status === "upcoming" || session.status === "pending" || session.status === "awaiting_confirmation") && matchesSearch;
     } else if (activeTab === "past") {
-      return (session.status === "completed" || session.status === "cancelled") && matchesSearch;
+      return (session.status === "completed" || session.status === "cancelled" || session.status === "disputed") && matchesSearch;
     }
     return matchesSearch;
   });
 
   // Stats
   const upcomingCount = sessions.filter(
-    (s) => s.status === "upcoming" || s.status === "pending"
+    (s) => s.status === "upcoming" || s.status === "pending" || s.status === "awaiting_confirmation"
   ).length;
   const pendingCount = sessions.filter((s) => s.status === "pending").length;
   const completedCount = sessions.filter((s) => s.status === "completed").length;
@@ -255,7 +261,21 @@ export default function InterviewerSessionsPage() {
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium">
             <AlertCircle className="w-3 h-3" />
-            Awaiting Confirmation
+            Pending Booking
+          </span>
+        );
+      case "awaiting_confirmation":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-medium animate-pulse">
+            <AlertCircle className="w-3 h-3" />
+            Awaiting Occurrence Confirmation
+          </span>
+        );
+      case "disputed":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
+            <AlertCircle className="w-3 h-3" />
+            Disputed / Under Review
           </span>
         );
       case "completed":
@@ -279,9 +299,19 @@ export default function InterviewerSessionsPage() {
     if (!selectedSession) return;
     setIsProcessing(true);
     try {
-      const res = await sessionApi.updateStatus(parseInt(selectedSession.id), "scheduled");
+      let res;
+      if (selectedSession.status === "awaiting_confirmation") {
+        res = await sessionApi.confirm(parseInt(selectedSession.id), true);
+      } else {
+        res = await sessionApi.updateStatus(parseInt(selectedSession.id), "scheduled");
+      }
+
       if (res.success) {
-        alert(`Session #${selectedSession.id} has been confirmed!`);
+        if (selectedSession.status === "awaiting_confirmation") {
+          alert(`Session #${selectedSession.id} occurrence confirmed!`);
+        } else {
+          alert(`Session #${selectedSession.id} has been confirmed!`);
+        }
         await fetchSessions();
       } else {
         alert(res.error?.message || "Failed to confirm session");
@@ -300,16 +330,26 @@ export default function InterviewerSessionsPage() {
     if (!selectedSession) return;
     setIsProcessing(true);
     try {
-      const res = await sessionApi.updateStatus(
-        parseInt(selectedSession.id),
-        "cancelled",
-        rejectReason || undefined
-      );
+      let res;
+      if (selectedSession.status === "awaiting_confirmation") {
+        res = await sessionApi.confirm(parseInt(selectedSession.id), false, rejectReason || undefined);
+      } else {
+        res = await sessionApi.updateStatus(
+          parseInt(selectedSession.id),
+          "cancelled",
+          rejectReason || undefined
+        );
+      }
+
       if (res.success) {
-        alert(`Session #${selectedSession.id} has been rejected.`);
+        if (selectedSession.status === "awaiting_confirmation") {
+          alert(`Session #${selectedSession.id} flagged as disputed.`);
+        } else {
+          alert(`Session #${selectedSession.id} has been rejected.`);
+        }
         await fetchSessions();
       } else {
-        alert(res.error?.message || "Failed to reject session");
+        alert(res.error?.message || "Failed to process request");
       }
     } catch (error) {
       console.error("Error rejecting session:", error);
@@ -584,6 +624,49 @@ export default function InterviewerSessionsPage() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-wrap">
+                      {session.status === "awaiting_confirmation" && (
+                        <div className="flex flex-col gap-3 w-full bg-amber-50 border border-amber-100 rounded-lg p-4 my-2">
+                          <p className="text-sm font-semibold text-amber-900 flex items-center gap-1.5">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                            Did this session take place?
+                          </p>
+                          <p className="text-xs text-amber-700 font-normal">
+                            Please confirm if the session with {session.candidateName} took place.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedSession(session);
+                                setShowConfirmModal(true);
+                              }}
+                              className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-md text-xs font-medium"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              Yes, it happened
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedSession(session);
+                                setShowRejectModal(true);
+                              }}
+                              className="flex items-center gap-1.5 border border-red-200 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-md text-xs font-medium"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              No, report issue
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {session.status === "disputed" && (
+                        <div className="bg-purple-50 border border-purple-100 rounded-lg p-3.5 w-full my-2">
+                          <p className="text-sm text-purple-800 flex items-center gap-1.5 font-medium">
+                            <AlertCircle className="w-4 h-4 shrink-0 text-purple-600" />
+                            This session is under review by admin.
+                          </p>
+                        </div>
+                      )}
+
                       {session.status === "pending" && (
                         <>
                           <button
@@ -734,7 +817,9 @@ export default function InterviewerSessionsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Confirm Session</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {selectedSession.status === "awaiting_confirmation" ? "Confirm Session Occurrence" : "Confirm Session"}
+              </h2>
               <button
                 onClick={() => {
                   setShowConfirmModal(false);
@@ -749,12 +834,18 @@ export default function InterviewerSessionsPage() {
             <div className="p-6">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                 <p className="text-green-700 text-sm">
-                  Confirm your session with <strong>{selectedSession.candidateName}</strong> on{" "}
-                  {formatDate(selectedSession.date)} at {formatTime(selectedSession.time)}?
+                  {selectedSession.status === "awaiting_confirmation" ? (
+                    <>Confirm that your session with <strong>{selectedSession.candidateName}</strong> on <strong>{formatDate(selectedSession.date)}</strong> occurred successfully?</>
+                  ) : (
+                    <>Confirm your session with <strong>{selectedSession.candidateName}</strong> on{" "}
+                    {formatDate(selectedSession.date)} at {formatTime(selectedSession.time)}?</>
+                  )}
                 </p>
               </div>
               <p className="text-sm text-gray-600">
-                The candidate will be notified and a meeting link will be generated.
+                {selectedSession.status === "awaiting_confirmation" 
+                  ? "This will complete the session and release the funds to your account."
+                  : "The candidate will be notified and a meeting link will be generated."}
               </p>
             </div>
 
@@ -779,7 +870,7 @@ export default function InterviewerSessionsPage() {
                     Confirming...
                   </>
                 ) : (
-                  "Confirm Session"
+                  selectedSession.status === "awaiting_confirmation" ? "Yes, Session Occurred" : "Confirm Session"
                 )}
               </button>
             </div>
@@ -792,7 +883,9 @@ export default function InterviewerSessionsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-md">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Reject Session</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {selectedSession.status === "awaiting_confirmation" ? "Report Session Issue" : "Reject Session"}
+              </h2>
               <button
                 onClick={() => {
                   setShowRejectModal(false);
@@ -807,19 +900,25 @@ export default function InterviewerSessionsPage() {
             <div className="p-6">
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <p className="text-red-700 text-sm">
-                  Are you sure you want to reject the session with{" "}
-                  <strong>{selectedSession.candidateName}</strong>?
+                  {selectedSession.status === "awaiting_confirmation" ? (
+                    <>Are you sure you want to report an issue or dispute the occurrence of the session with <strong>{selectedSession.candidateName}</strong>?</>
+                  ) : (
+                    <>Are you sure you want to reject the session with{" "}
+                    <strong>{selectedSession.candidateName}</strong>?</>
+                  )}
                 </p>
               </div>
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for rejection
+                  {selectedSession.status === "awaiting_confirmation" ? "Describe the issue / dispute reason" : "Reason for rejection"}
                 </label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="Let the candidate know why you're unavailable..."
+                  placeholder={selectedSession.status === "awaiting_confirmation" 
+                    ? "Please describe what happened (e.g. candidate was a no-show, technical issues)..."
+                    : "Let the candidate know why you're unavailable..."}
                   className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
                   rows={3}
                 />
@@ -844,10 +943,10 @@ export default function InterviewerSessionsPage() {
                 {isProcessing ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Rejecting...
+                    {selectedSession.status === "awaiting_confirmation" ? "Submitting..." : "Rejecting..."}
                   </>
                 ) : (
-                  "Reject Session"
+                  selectedSession.status === "awaiting_confirmation" ? "Report Issue / Dispute" : "Reject Session"
                 )}
               </button>
             </div>

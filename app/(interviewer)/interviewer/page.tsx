@@ -233,7 +233,8 @@ export default function InterviewerDashboardPage() {
       s.status === "pending" ||
       s.status === "scheduled" ||
       s.status === "rescheduled" ||
-      s.status === "in_progress"
+      s.status === "in_progress" ||
+      s.status === "awaiting_confirmation"
   );
   const completedList = sessions.filter((s) => s.status === "completed");
 
@@ -418,6 +419,8 @@ export default function InterviewerDashboardPage() {
                                   ? "bg-green-50 text-green-600"
                                   : session.status === "pending"
                                   ? "bg-yellow-50 text-yellow-600"
+                                  : session.status === "awaiting_confirmation"
+                                  ? "bg-amber-50 text-amber-600 animate-pulse font-medium"
                                   : "bg-orange-50 text-orange-600"
                               }`}
                             >
@@ -429,7 +432,9 @@ export default function InterviewerDashboardPage() {
                               {session.status === "scheduled" || session.status === "rescheduled"
                                 ? "Confirmed"
                                 : session.status === "pending"
-                                ? "Awaiting Confirmation"
+                                ? "Pending Booking"
+                                : session.status === "awaiting_confirmation"
+                                ? "Awaiting Occurrence"
                                 : session.status}
                             </span>
                           </div>
@@ -456,7 +461,53 @@ export default function InterviewerDashboardPage() {
 
                         {/* Actions */}
                         <div className="flex items-center gap-2">
-                          {session.status === "pending" ? (
+                          {session.status === "awaiting_confirmation" ? (
+                            <div className="flex flex-col gap-2 w-full bg-amber-50 border border-amber-100 rounded-lg p-4 my-2">
+                              <p className="text-xs font-semibold text-amber-900">
+                                Did this session take place?
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const res = await sessionApi.confirm(session.id, true);
+                                      if (res.success) {
+                                        alert("Session occurrence confirmed!");
+                                        await fetchDashboardData();
+                                      } else {
+                                        alert(res.error?.message || "Failed to confirm session");
+                                      }
+                                    } catch (e) {
+                                      alert("An error occurred");
+                                    }
+                                  }}
+                                  className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-md text-xs font-medium"
+                                >
+                                  Yes, it happened
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const reason = prompt("Describe what issue occurred:");
+                                    if (reason === null) return;
+                                    try {
+                                      const res = await sessionApi.confirm(session.id, false, reason || undefined);
+                                      if (res.success) {
+                                        alert("Session occurrence disputed!");
+                                        await fetchDashboardData();
+                                      } else {
+                                        alert(res.error?.message || "Failed to dispute session");
+                                      }
+                                    } catch (e) {
+                                      alert("An error occurred");
+                                    }
+                                  }}
+                                  className="border border-red-200 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-md text-xs font-medium"
+                                >
+                                  No, report issue
+                                </button>
+                              </div>
+                            </div>
+                          ) : session.status === "pending" ? (
                             <>
                               <button
                                 onClick={() => handleAcceptSession(session.id)}

@@ -1,6 +1,6 @@
 import { db } from "../config/database";
-import { interviewerReviews, jobSeekers, users } from "../db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { interviewerReviews, jobSeekers, users, interviewers } from "../db/schema";
+import { eq, desc, sql, avg, count } from "drizzle-orm";
 
 export async function createReview(data: {
   sessionId: number;
@@ -13,8 +13,34 @@ export async function createReview(data: {
   isActionable: boolean;
   isProfessional: boolean;
 }) {
-  const result = await db.insert(interviewerReviews).values(data).returning();
-  return result[0];
+  return await db.transaction(async (tx) => {
+    // 1. Insert the review
+    const [review] = await tx.insert(interviewerReviews).values(data).returning();
+
+    // 2. Recalculate rating average and total count for this interviewer
+    const [stats] = await tx
+      .select({
+        avgRating: avg(interviewerReviews.rating),
+        totalCount: count(interviewerReviews.id),
+      })
+      .from(interviewerReviews)
+      .where(eq(interviewerReviews.interviewerId, data.interviewerId));
+
+    const avgRatingVal = stats?.avgRating ? parseFloat(Number(stats.avgRating).toFixed(2)) : 0;
+    const totalCountVal = stats?.totalCount ? Number(stats.totalCount) : 0;
+
+    // 3. Update the interviewer's public profile stats in the DB
+    await tx
+      .update(interviewers)
+      .set({
+        ratingAverage: avgRatingVal.toFixed(2),
+        totalInterviews: totalCountVal,
+        updatedAt: new Date(),
+      })
+      .where(eq(interviewers.id, data.interviewerId));
+
+    return review;
+  });
 }
 
 export async function getInterviewerReviews(interviewerId: number) {

@@ -198,6 +198,8 @@ export const getPlatformAnalytics = async () => {
       total: sql<number>`count(*)::int`,
       completed: sql<number>`count(*) filter (where ${interviewSessions.sessionStatus} = 'completed')::int`,
       cancelled: sql<number>`count(*) filter (where ${interviewSessions.sessionStatus} = 'cancelled')::int`,
+      disputed: sql<number>`count(*) filter (where ${interviewSessions.sessionStatus} = 'disputed')::int`,
+      awaitingConfirmation: sql<number>`count(*) filter (where ${interviewSessions.sessionStatus} = 'awaiting_confirmation')::int`,
     })
     .from(interviewSessions);
 

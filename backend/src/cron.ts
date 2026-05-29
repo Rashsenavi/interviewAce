@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { db } from "./config/database";
 import { interviewSessions, users } from "./db/schema";
-import { eq, and, lte } from "drizzle-orm";
+import { eq, and, lte, sql } from "drizzle-orm";
 import { notifySessionStateChange } from "./utils/notification.utils";
 import { cancelSessionPayment } from "./services/payment.service";
 
@@ -51,6 +51,61 @@ export const initCronJobs = () => {
       }
     } catch (error) {
       console.error("[CRON] Error running pending session timeout job:", error);
+    }
+  });
+
+  // Run every hour — marks past scheduled sessions as awaiting confirmation
+  cron.schedule("0 * * * *", async () => {
+    console.log("[CRON] Checking for sessions to mark as awaiting confirmation...");
+    try {
+      const updated = await db
+        .update(interviewSessions)
+        .set({ sessionStatus: "awaiting_confirmation", updatedAt: new Date() })
+        .where(
+          and(
+            eq(interviewSessions.sessionStatus, "scheduled"),
+            lte(
+              interviewSessions.scheduledDate,
+              sql`NOW() - (interview_sessions.duration * INTERVAL '1 minute')`
+            )
+          )
+        )
+        .returning({ id: interviewSessions.id });
+
+      if (updated.length > 0) {
+        console.log(`[CRON] Marked ${updated.length} session(s) as awaiting_confirmation.`);
+      }
+    } catch (err) {
+      console.error("[CRON] Failed to transition sessions to awaiting_confirmation:", err);
+    }
+  });
+
+  // Runs every 6 hours — auto-disputes sessions unconfirmed for 48 hours
+  cron.schedule("0 */6 * * *", async () => {
+    console.log("[CRON] Checking for unconfirmed sessions to auto-dispute...");
+    try {
+      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const updated = await db
+        .update(interviewSessions)
+        .set({
+          sessionStatus: "disputed",
+          disputeReason: "Auto-flagged: interviewer did not confirm within 48 hours.",
+          disputedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(interviewSessions.sessionStatus, "awaiting_confirmation"),
+            lte(interviewSessions.scheduledDate, fortyEightHoursAgo)
+          )
+        )
+        .returning({ id: interviewSessions.id });
+
+      if (updated.length > 0) {
+        console.log(`[CRON] Auto-disputed ${updated.length} session(s) due to 48hr confirmation timeout.`);
+      }
+    } catch (err) {
+      console.error("[CRON] Failed to auto-dispute unconfirmed sessions:", err);
     }
   });
 

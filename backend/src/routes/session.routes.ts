@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, authorize } from "../middleware/auth";
+import { authenticate, authorize, checkVerified } from "../middleware/auth";
 import { asyncHandler } from "../middleware/errorHandler";
 import * as sessionController from "../controllers/session.controller";
 
@@ -46,5 +46,11 @@ router.put("/:id/meeting-link", authenticate, asyncHandler(sessionController.upd
  * Reschedule a session
  */
 router.post("/:id/reschedule", authenticate, asyncHandler(sessionController.rescheduleSession));
+
+/**
+ * PUT /api/sessions/:id/confirm
+ * Confirm if session occurred or dispute it (Interviewer only)
+ */
+router.put("/:id/confirm", authenticate, authorize("interviewer"), checkVerified, asyncHandler(sessionController.confirmSession));
 
 export default router;

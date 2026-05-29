@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { sessionApi, reviewApi } from "@/lib/api";
 
-type SessionStatus = "pending" | "scheduled" | "rescheduled" | "in_progress" | "completed" | "cancelled" | "no_show";
+type SessionStatus = "pending" | "scheduled" | "rescheduled" | "in_progress" | "completed" | "cancelled" | "no_show" | "awaiting_confirmation" | "disputed";
 
 interface Session {
   id: number;
@@ -57,7 +57,7 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   mixed: "Mixed Interview",
 };
 
-const STATUS_UPCOMING: SessionStatus[] = ["pending", "scheduled", "rescheduled", "in_progress"];
+const STATUS_UPCOMING: SessionStatus[] = ["pending", "scheduled", "rescheduled", "in_progress", "awaiting_confirmation", "disputed"];
 const STATUS_PAST: SessionStatus[] = ["completed", "cancelled", "no_show"];
 
 export default function MySessionsPage() {
@@ -191,6 +191,20 @@ export default function MySessionsPage() {
           <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
             <CheckCircle className="w-3 h-3" />
             Completed
+          </span>
+        );
+      case "awaiting_confirmation":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-medium">
+            <AlertCircle className="w-3 h-3" />
+            Under Review
+          </span>
+        );
+      case "disputed":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
+            <AlertCircle className="w-3 h-3" />
+            Disputed / Under Review
           </span>
         );
       case "cancelled":
@@ -482,8 +496,8 @@ export default function MySessionsPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        {isUpcoming && (
+                      <div className="flex items-center gap-2 w-full">
+                        {isUpcoming && session.sessionStatus !== "awaiting_confirmation" && session.sessionStatus !== "disputed" && (
                           <>
                             {session.meetingLink && (
                               <a
@@ -523,6 +537,24 @@ export default function MySessionsPage() {
                               Cancel
                             </button>
                           </>
+                        )}
+
+                        {session.sessionStatus === "awaiting_confirmation" && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 w-full">
+                            <p className="text-xs text-amber-800 flex items-center gap-1.5 font-medium">
+                              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+                              This session has ended. We are waiting for the interviewer to confirm its completion.
+                            </p>
+                          </div>
+                        )}
+
+                        {session.sessionStatus === "disputed" && (
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 w-full">
+                            <p className="text-xs text-purple-800 flex items-center gap-1.5 font-medium">
+                              <AlertCircle className="w-4 h-4 shrink-0 text-purple-600" />
+                              This session is currently under review by our admin team.
+                            </p>
+                          </div>
                         )}
 
                         {session.sessionStatus === "completed" && (

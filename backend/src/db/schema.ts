@@ -28,7 +28,9 @@ export const sessionStatusEnum = pgEnum("session_status", [
   "scheduled",
   "rescheduled",
   "in_progress",
+  "awaiting_confirmation",
   "completed",
+  "disputed",
   "cancelled",
   "no_show",
 ]);
@@ -222,6 +224,8 @@ export const interviewSessions = pgTable("interview_sessions", {
   cancellationReason: text("cancellation_reason"),
   cancelledBy: integer("cancelled_by").references(() => users.id),
   rescheduleCount: integer("reschedule_count").default(0),
+  disputeReason: text("dispute_reason"),
+  disputedAt: timestamp("disputed_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
