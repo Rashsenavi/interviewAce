@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { videoApi } from "@/lib/api";
 import { X, Upload, FileVideo } from "lucide-react";
-
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_KEY || "";
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface UploadVideoModalProps {
   session: any;
@@ -25,13 +19,13 @@ export function UploadVideoModal({ session, onClose, onSuccess }: UploadVideoMod
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0];
       if (selectedFile.size > MAX_FILE_SIZE) {
-        setError("File size exceeds 50MB limit.");
+        setError("File size exceeds 100MB limit.");
         setFile(null);
         return;
       }
@@ -51,46 +45,67 @@ export function UploadVideoModal({ session, onClose, onSuccess }: UploadVideoMod
     try {
       setUploading(true);
       setError(null);
+      setProgress(0);
 
-      // 1. Upload to Supabase Storage
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `sample_videos/${fileName}`;
-
-      // We'll simulate progress since supabase js doesn't have a built-in progress event for standard uploads
-      let simulatedProgress = 0;
-      const progressInterval = setInterval(() => {
-        simulatedProgress += 5;
-        if (simulatedProgress > 90) clearInterval(progressInterval);
-        setProgress(Math.min(simulatedProgress, 90));
-      }, 500);
-
-      const { data, error: uploadError } = await supabase.storage
-        .from("videos") // Make sure this bucket exists in Supabase
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      clearInterval(progressInterval);
-
-      if (uploadError) {
-        throw new Error(uploadError.message || "Failed to upload video to storage");
+      // 1. Get Cloudinary signed signature from backend
+      const signatureResponse = await videoApi.getCloudinarySignature();
+      
+      if (!signatureResponse.success || !signatureResponse.data) {
+        throw new Error(signatureResponse.error?.message || "Failed to generate upload signature");
       }
 
-      setProgress(100);
+      const { signature, timestamp, folder, apiKey, cloudName } = signatureResponse.data;
 
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage.from("videos").getPublicUrl(filePath);
-      const publicUrl = publicUrlData.publicUrl;
+      // 2. Upload file directly to Cloudinary using FormData and XMLHttpRequest
+      const secureUrl = await new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, true);
 
-      // 2. Save metadata to database
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            setProgress(percentComplete);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const responseJson = JSON.parse(xhr.responseText);
+              if (responseJson.secure_url) {
+                resolve(responseJson.secure_url);
+              } else {
+                reject(new Error("Cloudinary did not return a secure URL"));
+              }
+            } catch (err) {
+              reject(new Error("Failed to parse Cloudinary response"));
+            }
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => {
+          reject(new Error("Network error during upload to Cloudinary."));
+        };
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("api_key", apiKey);
+        formData.append("timestamp", String(timestamp));
+        formData.append("signature", signature);
+        formData.append("folder", folder);
+
+        xhr.send(formData);
+      });
+
+      // 3. Save metadata to database
       const response = await videoApi.uploadVideo({
         sessionId: parseInt(session.id),
         industryId: session.industryId,
         videoTitle: title,
         videoDescription: description,
-        videoUrl: publicUrl,
+        videoUrl: secureUrl,
         videoType: videoType,
         durationSeconds: 0, // We can extract this later if needed
       });
@@ -128,7 +143,7 @@ export function UploadVideoModal({ session, onClose, onSuccess }: UploadVideoMod
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Video File (Max 50MB)
+                Video File (Max 100MB)
               </label>
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg">
                 <div className="space-y-1 text-center">
@@ -149,7 +164,7 @@ export function UploadVideoModal({ session, onClose, onSuccess }: UploadVideoMod
                       />
                     </label>
                   </div>
-                  <p className="text-xs text-gray-500">MP4, WebM up to 50MB</p>
+                  <p className="text-xs text-gray-500">MP4, WebM up to 100MB</p>
                   {file && <p className="text-sm font-medium text-teal-600 mt-2">{file.name}</p>}
                 </div>
               </div>

@@ -519,6 +519,16 @@ export const videoApi = {
     return apiClient.post<{ success: boolean }>(`/videos/${id}/view`);
   },
 
+  getCloudinarySignature: async () => {
+    return apiClient.post<{
+      signature: string;
+      timestamp: number;
+      folder: string;
+      apiKey: string;
+      cloudName: string;
+    }>("/videos/cloudinary-signature");
+  },
+
   uploadVideo: async (data: {
     sessionId?: number;
     industryId?: number;

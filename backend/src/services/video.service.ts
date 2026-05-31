@@ -1,6 +1,8 @@
 import { db } from "../config/database";
 import { sampleVideos, users, industries, interviewSessions, jobSeekers } from "../db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import cloudinary, { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } from "../config/cloudinary";
+
 
 /**
  * Creates a new sample video record.
@@ -112,3 +114,31 @@ export const incrementViewCount = async (videoId: number) => {
     sql`UPDATE sample_videos SET view_count = view_count + 1 WHERE id = ${videoId}`
   );
 };
+
+/**
+ * Generates a signature to upload a video directly to Cloudinary.
+ */
+export const generateCloudinarySignature = async () => {
+  const timestamp = Math.round(new Date().getTime() / 1000);
+  const folder = "sample_videos";
+
+  const paramsToSign = {
+    timestamp,
+    folder,
+  };
+
+  const signature = cloudinary.utils.api_sign_request(
+    paramsToSign,
+    CLOUDINARY_API_SECRET
+  );
+
+  return {
+    signature,
+    timestamp,
+    folder,
+    apiKey: CLOUDINARY_API_KEY,
+    cloudName: CLOUDINARY_CLOUD_NAME,
+  };
+};
+
+

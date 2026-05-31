@@ -1,7 +1,24 @@
 import { Request, Response } from "express";
 import * as videoService from "../services/video.service";
 
+export const getCloudinaryUploadSignature = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: { code: "UNAUTHORIZED" } });
+  }
+
+  try {
+    const result = await videoService.generateCloudinarySignature();
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: error instanceof Error ? error.message : "Failed to generate Cloudinary signature" }
+    });
+  }
+};
+
 export const uploadVideo = async (req: Request, res: Response) => {
+
   if (!req.user) {
     return res.status(401).json({ success: false, error: { code: "UNAUTHORIZED" } });
   }

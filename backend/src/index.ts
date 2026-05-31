@@ -136,3 +136,6 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 export default app;
+
+// Trigger restart to reload env.local
+

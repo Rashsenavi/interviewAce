@@ -11,6 +11,13 @@ router.post("/:id/view", asyncHandler(videoController.incrementViewCount));
 
 // Interviewer endpoints
 router.post(
+  "/cloudinary-signature",
+  authenticate,
+  authorize("interviewer"),
+  asyncHandler(videoController.getCloudinaryUploadSignature)
+);
+
+router.post(
   "/upload",
   authenticate,
   authorize("interviewer"),
