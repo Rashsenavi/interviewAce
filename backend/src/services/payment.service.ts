@@ -522,7 +522,7 @@ export const getAdminPayoutSummary = async (month: string) => {
 export const releasePayouts = async (
   interviewerIds: number[],
   month: string,
-  adminId: number,
+  adminId: number | null,
   autoReleased = false
 ) => {
   const summary = await getAdminPayoutSummary(month);
@@ -543,7 +543,7 @@ export const releasePayouts = async (
         netPayoutAmount: item.netPayoutAmount.toFixed(2),
         payoutStatus: "paid",
         bankAccountNumber: item.interviewer.bankAccountNumber || null,
-        releasedByAdminId: adminId,
+        releasedByAdminId: adminId || null,
         releasedAt: new Date(),
         autoReleased,
       })
@@ -576,8 +576,8 @@ export const autoReleaseOverduePayouts = async (month: string) => {
 
   if (pending.length === 0) return { released: 0 };
 
-  // Use admin ID 0 to mark as system-released
-  const result = await releasePayouts(pending, month, 0, true);
+  // Use null admin ID to mark as system-released
+  const result = await releasePayouts(pending, month, null, true);
   console.log(`[AutoPayout] Released ${result.released} payouts for ${month}`);
   return { released: result.released };
 };

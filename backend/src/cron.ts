@@ -19,7 +19,7 @@ export const initCronJobs = () => {
         .set({
           sessionStatus: "cancelled",
           cancellationReason: "Auto-cancelled: Interviewer did not respond within 48 hours.",
-          cancelledBy: 0, // SYSTEM user ID
+          cancelledBy: null, // SYSTEM (null)
           updatedAt: new Date(),
         })
         .where(
