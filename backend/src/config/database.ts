@@ -14,7 +14,7 @@ const globalForPostgres = globalThis as unknown as {
 
 const pool = globalForPostgres.pgPool ?? new Pool({
   connectionString,
-  max: 10,
+  max: process.env.NODE_ENV === "production" ? 10 : 3,
   ssl: { rejectUnauthorized: false },
   keepAlive: true,
   idleTimeoutMillis: 10000, // Proactively close idle connections to avoid AWS NAT drops

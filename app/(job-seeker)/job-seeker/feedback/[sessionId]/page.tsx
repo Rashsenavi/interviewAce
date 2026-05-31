@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { feedbackApi } from "@/lib/api";
-import { Star, ArrowLeft, CheckCircle2, AlertTriangle, Lightbulb } from "lucide-react";
+import { Star, ArrowLeft, CheckCircle2, AlertTriangle, Lightbulb, Download } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -31,6 +31,10 @@ export default function SessionFeedbackDetail() {
     }
   }, [params.sessionId]);
 
+  const exportPdf = () => {
+    window.print();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -53,9 +57,26 @@ export default function SessionFeedbackDetail() {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          aside, header, .no-print, select, button, nav {
+            display: none !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+        }
+      `}} />
       {/* Header */}
       <div>
-        <Link href="/job-seeker/feedback" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 mb-4 transition-colors">
+        <Link href="/job-seeker/feedback" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700 mb-4 transition-colors no-print">
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Dashboard
         </Link>
@@ -66,11 +87,20 @@ export default function SessionFeedbackDetail() {
               Submitted on {format(new Date(feedback.createdAt), "MMMM d, yyyy 'at' h:mm a")}
             </p>
           </div>
-          <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-500">Overall Score:</span>
-            <div className="flex items-center">
-              <Star className="h-5 w-5 text-yellow-500 fill-current" />
-              <span className="ml-1 text-lg font-bold text-gray-900">{feedback.overallRating}/5</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={exportPdf}
+              className="bg-white hover:bg-gray-50 text-indigo-600 border border-indigo-200 px-4 py-2 rounded-lg shadow-sm text-sm font-medium flex items-center gap-1.5 transition-colors no-print"
+            >
+              <Download className="w-4 h-4" />
+              Download PDF Report
+            </button>
+            <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-500">Overall Score:</span>
+              <div className="flex items-center">
+                <Star className="h-5 w-5 text-yellow-500 fill-current" />
+                <span className="ml-1 text-lg font-bold text-gray-900">{feedback.overallRating}/5</span>
+              </div>
             </div>
           </div>
         </div>

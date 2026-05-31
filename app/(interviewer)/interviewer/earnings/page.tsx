@@ -73,6 +73,39 @@ export default function InterviewerEarningsPage() {
 
   useEffect(() => { loadEarnings(); }, [month]);
 
+  const exportCsv = async () => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+      const url = `/api/reports/interviewer/earnings${month ? `?month=${month}` : ""}`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download CSV");
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.setAttribute("download", `interviewer_earnings_${month || "all"}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (err) {
+      alert("Failed to export CSV report.");
+    }
+  };
+
+  const exportPdf = () => {
+    window.print();
+  };
+
   const summary = earningsData?.summary;
   const payout = earningsData?.payout;
   const earnings: any[] = earningsData?.earnings || [];
@@ -95,15 +128,37 @@ export default function InterviewerEarningsPage() {
 
   return (
     <div className="w-full">
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          aside, header, .no-print, select, button, nav {
+            display: none !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .print-full-width {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      `}} />
       {/* Page Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Earnings</h1>
-          <p className="text-gray-500 text-sm">Track your session earnings and payout history</p>
+          <p className="text-gray-500 text-sm no-print">Track your session earnings and payout history</p>
+          <p className="text-sm text-gray-600 hidden print:block font-medium">Report Month: {monthOptions.find(o => o.value === month)?.label || "All Time"}</p>
         </div>
 
         {/* Month Picker */}
-        <div className="relative">
+        <div className="relative no-print">
           <select
             value={month}
             onChange={(e) => setMonth(e.target.value)}
@@ -267,7 +322,7 @@ export default function InterviewerEarningsPage() {
           )}
 
           {/* Filters */}
-          <div className="bg-white rounded-xl border border-gray-200 mb-4">
+          <div className="bg-white rounded-xl border border-gray-200 mb-4 no-print">
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -295,10 +350,22 @@ export default function InterviewerEarningsPage() {
                 </div>
               </div>
 
-              <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
-                <Download className="w-4 h-4" />
-                Export CSV
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={exportCsv}
+                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </button>
+                <button 
+                  onClick={exportPdf}
+                  className="flex items-center gap-2 text-teal-600 hover:text-teal-700 text-sm font-medium border border-teal-200 rounded-lg px-3 py-1.5 hover:bg-teal-50/50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </button>
+              </div>
             </div>
           </div>
 

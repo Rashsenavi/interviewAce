@@ -23,6 +23,8 @@ import supportRoutes from "./routes/support.routes";
 import reviewRoutes from "./routes/review.routes";
 import videoRoutes from "./routes/video.routes";
 import publicRoutes from "./routes/public.routes";
+import reportRoutes from "./routes/report.routes";
+
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
@@ -82,6 +84,8 @@ app.use("/api/support", supportRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/videos", videoRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/reports", reportRoutes);
+
 
 // 404 handler
 app.use((req: Request, res: Response) => {

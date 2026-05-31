@@ -61,6 +61,39 @@ export default function AdminPayoutsPage() {
 
   const monthOptions = getMonthOptions();
 
+  const exportCsv = async () => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+      const url = `/api/reports/admin/payouts?month=${month}`;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download CSV");
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.setAttribute("download", `admin_payouts_${month}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (err) {
+      alert("Failed to export CSV report.");
+    }
+  };
+
+  const exportPdf = () => {
+    window.print();
+  };
+
   const loadPayouts = async () => {
     setLoading(true);
     setError(null);
@@ -131,25 +164,58 @@ export default function AdminPayoutsPage() {
 
   return (
     <div className="w-full">
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          aside, header, .no-print, select, button, nav {
+            display: none !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+        }
+      `}} />
       {/* Page Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Interviewer Payouts</h1>
-          <p className="text-gray-500 text-sm">Review and release monthly salary to interviewers</p>
+          <p className="text-gray-500 text-sm no-print">Review and release monthly salary to interviewers</p>
+          <p className="text-sm text-gray-600 hidden print:block font-medium">Report Month: {monthOptions.find(o => o.value === month)?.label || month}</p>
         </div>
 
-        {/* Month Picker */}
-        <div className="relative">
-          <select
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="appearance-none bg-white border border-gray-300 rounded-lg pl-4 pr-10 py-2.5 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+        {/* Actions */}
+        <div className="flex items-center gap-2 no-print">
+          <button 
+            onClick={exportCsv}
+            className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            {monthOptions.map((m) => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            Export CSV
+          </button>
+          <button 
+            onClick={exportPdf}
+            className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Download PDF
+          </button>
+          
+          <div className="relative">
+            <select
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="appearance-none bg-white border border-gray-300 rounded-lg pl-4 pr-10 py-2.5 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              {monthOptions.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
         </div>
       </div>
 
@@ -218,7 +284,7 @@ export default function AdminPayoutsPage() {
 
       {/* Bulk Action Bar */}
       {selectedPending.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between no-print">
           <p className="text-blue-800 text-sm font-medium">
             {selectedPending.length} interviewer(s) selected
           </p>
@@ -242,7 +308,7 @@ export default function AdminPayoutsPage() {
               {monthOptions.find((m) => m.value === month)?.label}
             </h3>
             {pendingCount > 0 && (
-              <span className="bg-orange-100 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full">
+              <span className="bg-orange-100 text-orange-700 text-xs font-medium px-2 py-0.5 rounded-full no-print">
                 {pendingCount} pending
               </span>
             )}
@@ -251,7 +317,7 @@ export default function AdminPayoutsPage() {
           {pendingCount > 0 && (
             <button
               onClick={toggleAll}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium no-print"
             >
               {selectedIds.size === pendingCount ? "Deselect All" : "Select All Pending"}
             </button>
@@ -283,7 +349,7 @@ export default function AdminPayoutsPage() {
                   className={`p-5 flex items-center gap-4 transition-colors ${isSelected ? "bg-blue-50" : "hover:bg-gray-50"}`}
                 >
                   {/* Checkbox (only for pending) */}
-                  <div className="w-5 shrink-0">
+                  <div className="w-5 shrink-0 no-print">
                     {!isPaid && (
                       <input
                         type="checkbox"
@@ -336,11 +402,11 @@ export default function AdminPayoutsPage() {
                   </div>
 
                   {/* Status / Action */}
-                  <div className="shrink-0 w-36 text-right">
+                  <div className="shrink-0 w-36 text-right print:w-auto">
                     {isPaid ? (
                       <div>
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                          <CheckCircle className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-medium print:bg-white print:text-black">
+                          <CheckCircle className="w-3 h-3 no-print" />
                           Released
                         </span>
                         {row.payoutRecord?.releasedAt && (
@@ -352,14 +418,19 @@ export default function AdminPayoutsPage() {
                           </p>
                         )}
                         {row.payoutRecord?.autoReleased && (
-                          <p className="text-xs text-blue-500 mt-0.5">Auto-released</p>
+                          <p className="text-xs text-blue-500 mt-0.5 no-print">Auto-released</p>
                         )}
                       </div>
                     ) : (
+                      <div className="print:block hidden text-sm font-medium text-amber-600">
+                        Pending
+                      </div>
+                    )}
+                    {!isPaid && (
                       <button
                         onClick={() => handleRelease([row.interviewerId])}
                         disabled={isReleasing || releasing.size > 0}
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 ml-auto disabled:opacity-50 transition-colors"
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 ml-auto disabled:opacity-50 transition-colors no-print"
                       >
                         {isReleasing ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
