@@ -44,21 +44,14 @@ export class MeetingService {
       } catch (fallbackError) {
         console.error("Fallback generation also failed. Returning mock link for demonstration purposes:", fallbackError);
         
-        // Since you are on a free account currently, we will return a realistic mock link
-        // so your final project presentation looks perfect and the buttons work!
-        // Generates a realistic Google Meet link format: aaa-aaaa-aaa
-        const generateGoogleMeetId = () => {
-          const chars = "abcdefghijklmnopqrstuvwxyz";
-          const randomStr = (length: number) => 
-            Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join("");
-          
-          return `${randomStr(3)}-${randomStr(4)}-${randomStr(3)}`;
-        };
-
-        const mockId = generateGoogleMeetId();
+        // Use free Jitsi Meet rooms which work out-of-the-box for actual video calls
+        const safeTopic = details.topic.replace(/[^a-zA-Z0-9]/g, "");
+        const timestamp = details.startTime instanceof Date ? details.startTime.getTime() : Date.now();
+        const jitsiRoom = `InterviewAce-${safeTopic}-${timestamp}`;
+        
         return {
-          joinUrl: `https://meet.google.com/${mockId}`,
-          meetingId: mockId,
+          joinUrl: `https://meet.jit.si/${jitsiRoom}`,
+          meetingId: jitsiRoom,
           provider: selectedPlatform,
         };
       }

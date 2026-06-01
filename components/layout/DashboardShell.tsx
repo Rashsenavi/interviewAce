@@ -109,6 +109,7 @@ const roleConfig: Record<
       {
         groupLabel: "ACCOUNT",
         items: [
+          { label: "Settings", href: "/interviewer/profile", icon: Settings },
           { label: "Support", href: "/interviewer/support", icon: HelpCircle },
         ],
       },
@@ -233,7 +234,7 @@ function SidebarContent({
             ? group.items
             : group.items.filter((item) => {
                 const root = `/${user?.userType === "interviewer" ? "interviewer" : "job-seeker"}`;
-                return item.href === root;
+                return item.href === root || item.href === "/interviewer/profile";
               });
 
           if (visibleItems.length === 0) return null;
