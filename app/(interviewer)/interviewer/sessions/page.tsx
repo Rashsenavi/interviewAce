@@ -1182,6 +1182,31 @@ export default function InterviewerSessionsPage() {
                   <span className="text-gray-500">Status</span>
                   {getStatusBadge(selectedSession.status)}
                 </div>
+                {selectedSession.meetingLink && (
+                  <div className="flex flex-col gap-1.5 pt-2">
+                    <span className="text-sm font-semibold text-gray-700">Meeting Link</span>
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                      <Video size={16} className="text-slate-400 shrink-0" />
+                      <a
+                        href={selectedSession.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 font-medium hover:underline truncate flex-1"
+                      >
+                        {selectedSession.meetingLink}
+                      </a>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedSession.meetingLink || "");
+                          alert("Meeting link copied to clipboard!");
+                        }}
+                        className="text-[10px] text-gray-500 hover:text-gray-800 bg-white border border-gray-300 rounded px-1.5 py-0.5 shrink-0"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {selectedSession.status === "completed" && (
                   <div className="flex justify-between">
                     <span className="text-gray-500">Earnings</span>
