@@ -921,10 +921,19 @@ export const bookSessionWithCredit = async (sessionId: number, userId: number) =
       })
       .returning();
 
-    // 3. Update session status to 'scheduled' since payment is complete
+    // 3. Update session status to 'scheduled' since payment is complete, and auto-generate Jitsi Meet link
+    const safeTopic = (session.sessionType || "interview").replace(/[^a-zA-Z0-9]/g, "");
+    const timestamp = session.scheduledDate ? new Date(session.scheduledDate).getTime() : Date.now();
+    const jitsiRoom = `InterviewAce-${safeTopic}-${timestamp}`;
+    const autoMeetingLink = `https://meet.jit.si/${jitsiRoom}`;
+
     await tx
       .update(interviewSessions)
-      .set({ sessionStatus: "scheduled", updatedAt: new Date() })
+      .set({ 
+        sessionStatus: "scheduled", 
+        meetingLink: autoMeetingLink,
+        updatedAt: new Date() 
+      })
       .where(eq(interviewSessions.id, sessionId));
 
     // Send notifications

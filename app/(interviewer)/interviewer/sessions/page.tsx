@@ -78,10 +78,27 @@ export default function InterviewerSessionsPage() {
   };
 
   useEffect(() => {
-    if (showConfirmModal && selectedSession && selectedSession.status === "pending") {
-      const defaultPlatform = profile?.preferredMeetingPlatform || "zoom";
-      setSelectedPlatform(defaultPlatform as any);
-      setCustomLink("");
+    if (showConfirmModal && selectedSession) {
+      if (selectedSession.status === "pending") {
+        const defaultPlatform = profile?.preferredMeetingPlatform || "zoom";
+        setSelectedPlatform(defaultPlatform as any);
+        setCustomLink("");
+      } else if (selectedSession.status === "upcoming") {
+        const link = selectedSession.meetingLink || "";
+        setCustomLink(link);
+        
+        if (link.includes("meet.jit.si")) {
+          setSelectedPlatform("jitsi");
+        } else if (link.includes("meet.google.com")) {
+          setSelectedPlatform("meet");
+        } else if (link.includes("zoom.us")) {
+          setSelectedPlatform("zoom");
+        } else if (link.includes("teams.microsoft.com") || link.includes("teams.live.com")) {
+          setSelectedPlatform("teams");
+        } else {
+          setSelectedPlatform("zoom");
+        }
+      }
     }
   }, [showConfirmModal, selectedSession, profile]);
 
@@ -335,6 +352,16 @@ export default function InterviewerSessionsPage() {
       let res;
       if (selectedSession.status === "awaiting_confirmation") {
         res = await sessionApi.confirm(parseInt(selectedSession.id), true);
+      } else if (selectedSession.status === "upcoming") {
+        const link = selectedPlatform !== "jitsi" ? customLink.trim() : "";
+        let finalLink = link;
+        if (selectedPlatform === "jitsi") {
+          const safeTopic = (selectedSession.sessionType || "interview").replace(/[^a-zA-Z0-9]/g, "");
+          const timestamp = selectedSession.originalScheduledDate ? new Date(selectedSession.originalScheduledDate).getTime() : Date.now();
+          const jitsiRoom = `InterviewAce-${safeTopic}-${timestamp}`;
+          finalLink = `https://meet.jit.si/${jitsiRoom}`;
+        }
+        res = await sessionApi.updateMeetingLink(parseInt(selectedSession.id), finalLink);
       } else {
         const link = selectedPlatform !== "jitsi" ? customLink.trim() : undefined;
         res = await sessionApi.updateStatus(parseInt(selectedSession.id), "scheduled", undefined, link);
@@ -343,6 +370,8 @@ export default function InterviewerSessionsPage() {
       if (res.success) {
         if (selectedSession.status === "awaiting_confirmation") {
           alert(`Session #${selectedSession.id} occurrence confirmed!`);
+        } else if (selectedSession.status === "upcoming") {
+          alert(`Session #${selectedSession.id} meeting link updated!`);
         } else {
           alert(`Session #${selectedSession.id} has been confirmed!`);
         }
@@ -729,16 +758,39 @@ export default function InterviewerSessionsPage() {
 
                       {session.status === "upcoming" && (
                         <>
-                          {session.meetingLink && (
-                            <a
-                              href={session.meetingLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                          {session.meetingLink ? (
+                            <>
+                              <a
+                                href={session.meetingLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                              >
+                                <Video className="w-4 h-4" />
+                                Start Session
+                              </a>
+                              <button
+                                onClick={() => {
+                                  setSelectedSession(session);
+                                  setShowConfirmModal(true);
+                                }}
+                                className="flex items-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-medium"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                                Edit Link
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedSession(session);
+                                setShowConfirmModal(true);
+                              }}
+                              className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
                             >
                               <Video className="w-4 h-4" />
-                              Start Session
-                            </a>
+                              + Add Meeting Link
+                            </button>
                           )}
                           <a
                             href={`mailto:${session.candidateEmail}`}
@@ -850,10 +902,14 @@ export default function InterviewerSessionsPage() {
       {/* Confirm Modal */}
       {showConfirmModal && selectedSession && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`bg-white rounded-xl w-full ${selectedSession.status === "pending" ? "max-w-lg" : "max-w-md"}`}>
+          <div className={`bg-white rounded-xl w-full ${selectedSession.status === "pending" || selectedSession.status === "upcoming" ? "max-w-lg" : "max-w-md"}`}>
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">
-                {selectedSession.status === "awaiting_confirmation" ? "Confirm Session Occurrence" : "Confirm & Setup Session"}
+                {selectedSession.status === "awaiting_confirmation" 
+                  ? "Confirm Session Occurrence" 
+                  : selectedSession.status === "upcoming"
+                  ? "Update Meeting Link"
+                  : "Confirm & Setup Session"}
               </h2>
               <button
                 onClick={() => {
@@ -871,6 +927,9 @@ export default function InterviewerSessionsPage() {
                 <p className="text-green-700 text-sm">
                   {selectedSession.status === "awaiting_confirmation" ? (
                     <>Confirm that your session with <strong>{selectedSession.candidateName}</strong> on <strong>{formatDate(selectedSession.date)}</strong> occurred successfully?</>
+                  ) : selectedSession.status === "upcoming" ? (
+                    <>Update the video meeting link for your session with <strong>{selectedSession.candidateName}</strong> on{" "}
+                    <strong>{formatDate(selectedSession.date)}</strong> at <strong>{formatTime(selectedSession.time)}</strong>?</>
                   ) : (
                     <>Accept and confirm your session with <strong>{selectedSession.candidateName}</strong> on{" "}
                     {formatDate(selectedSession.date)} at {formatTime(selectedSession.time)}?</>
@@ -883,8 +942,8 @@ export default function InterviewerSessionsPage() {
                   : "Please choose how the video meeting should be created. The candidate and admin will be notified."}
               </p>
 
-              {/* Setup meeting link if status is pending */}
-              {selectedSession.status === "pending" && (
+              {/* Setup meeting link if status is pending or upcoming */}
+              {(selectedSession.status === "pending" || selectedSession.status === "upcoming") && (
                 <div className="space-y-4 border-t border-gray-100 pt-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1004,7 +1063,7 @@ export default function InterviewerSessionsPage() {
                 onClick={handleConfirmSession}
                 disabled={
                   isProcessing || 
-                  (selectedSession.status === "pending" && 
+                  ((selectedSession.status === "pending" || selectedSession.status === "upcoming") && 
                    selectedPlatform !== "jitsi" && 
                    (!customLink.trim() || !isValidUrl(customLink)))
                 }
@@ -1016,7 +1075,11 @@ export default function InterviewerSessionsPage() {
                     Confirming...
                   </>
                 ) : (
-                  selectedSession.status === "awaiting_confirmation" ? "Yes, Session Occurred" : "Confirm & Save Link"
+                  selectedSession.status === "awaiting_confirmation" 
+                    ? "Yes, Session Occurred" 
+                    : selectedSession.status === "upcoming"
+                    ? "Save Meeting Link"
+                    : "Confirm & Save Link"
                 )}
               </button>
             </div>
