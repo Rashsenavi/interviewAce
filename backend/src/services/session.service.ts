@@ -282,7 +282,8 @@ export const updateSessionStatus = async (
   sessionId: number,
   status: string,
   userId: number,
-  reason?: string
+  reason?: string,
+  meetingLink?: string
 ) => {
   const session = await getSessionById(sessionId, userId);
 
@@ -300,29 +301,33 @@ export const updateSessionStatus = async (
 
   // Generate meeting link if status is changing to scheduled (accepted) and it doesn't have one yet
   if (status === "scheduled" && (!session.meetingLink || session.meetingLink === "PENDING_GENERATION" || session.meetingLink === "")) {
-    // Get interviewer's platform preference
-    const [interviewer] = await db
-      .select({ preferredMeetingPlatform: interviewers.preferredMeetingPlatform })
-      .from(interviewers)
-      .where(eq(interviewers.id, session.interviewerId))
-      .limit(1);
+    if (meetingLink && meetingLink.trim() !== "") {
+      updateData.meetingLink = meetingLink.trim();
+    } else {
+      // Get interviewer's platform preference
+      const [interviewer] = await db
+        .select({ preferredMeetingPlatform: interviewers.preferredMeetingPlatform })
+        .from(interviewers)
+        .where(eq(interviewers.id, session.interviewerId))
+        .limit(1);
 
-    let meetingLink = "";
-    try {
-      const result = await meetingService.generateMeeting(
-        (interviewer?.preferredMeetingPlatform as "zoom" | "teams") || "zoom",
-        {
-          topic: `Interview Session - ${session.sessionType}`,
-          startTime: session.scheduledDate,
-          durationMinutes: session.duration,
-        }
-      );
-      meetingLink = result.joinUrl;
-    } catch (error) {
-      console.error("Failed to generate meeting link during status update", error);
-      meetingLink = "PENDING_GENERATION";
+      let generatedLink = "";
+      try {
+        const result = await meetingService.generateMeeting(
+          (interviewer?.preferredMeetingPlatform as "zoom" | "teams") || "zoom",
+          {
+            topic: `Interview Session - ${session.sessionType}`,
+            startTime: session.scheduledDate,
+            durationMinutes: session.duration,
+          }
+        );
+        generatedLink = result.joinUrl;
+      } catch (error) {
+        console.error("Failed to generate meeting link during status update", error);
+        generatedLink = "PENDING_GENERATION";
+      }
+      updateData.meetingLink = generatedLink;
     }
-    updateData.meetingLink = meetingLink;
   }
 
   if (status === "cancelled") {

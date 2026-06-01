@@ -19,6 +19,7 @@ const createSessionSchema = z.object({
 const updateStatusSchema = z.object({
   status: z.enum(["pending", "scheduled", "rescheduled", "in_progress", "completed", "cancelled", "no_show"]),
   reason: z.string().optional(),
+  meetingLink: z.string().url().optional().or(z.string().length(0)),
 });
 
 const rescheduleSchema = z.object({
@@ -175,7 +176,8 @@ export const updateSessionStatus = async (req: Request, res: Response) => {
       sessionId,
       validatedData.status,
       req.user.id,
-      validatedData.reason
+      validatedData.reason,
+      validatedData.meetingLink
     );
 
     res.json({

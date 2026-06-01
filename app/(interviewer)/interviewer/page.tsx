@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { interviewerApi, sessionApi } from "@/lib/api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   DollarSign,
   Calendar,
@@ -122,6 +123,7 @@ function EmptyState({
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function InterviewerDashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -185,16 +187,7 @@ export default function InterviewerDashboardPage() {
   };
 
   const handleAcceptSession = async (id: number) => {
-    try {
-      const res = await sessionApi.updateStatus(id, "scheduled");
-      if (res.success) {
-        await fetchDashboardData();
-      } else {
-        alert(res.error?.message || "Failed to accept session");
-      }
-    } catch {
-      alert("An unexpected error occurred.");
-    }
+    router.push("/interviewer/sessions");
   };
 
   const handleDeclineSession = async (id: number) => {

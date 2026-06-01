@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { sessionApi, feedbackApi } from "@/lib/api";
+import { sessionApi, feedbackApi, interviewerApi } from "@/lib/api";
 import {
   Calendar,
   Clock,
@@ -62,6 +62,28 @@ export default function InterviewerSessionsPage() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Custom meeting link states
+  const [profile, setProfile] = useState<any>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<"jitsi" | "zoom" | "teams" | "meet">("jitsi");
+  const [customLink, setCustomLink] = useState("");
+
+  const isValidUrl = (str: string) => {
+    try {
+      new URL(str);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (showConfirmModal && selectedSession && selectedSession.status === "pending") {
+      const defaultPlatform = profile?.preferredMeetingPlatform || "zoom";
+      setSelectedPlatform(defaultPlatform as any);
+      setCustomLink("");
+    }
+  }, [showConfirmModal, selectedSession, profile]);
 
   // Additional state for Cancel and Reschedule
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -201,6 +223,17 @@ export default function InterviewerSessionsPage() {
 
   useEffect(() => {
     fetchSessions();
+    const fetchProfile = async () => {
+      try {
+        const res = await interviewerApi.getProfile();
+        if (res.success && res.data?.profile) {
+          setProfile(res.data.profile);
+        }
+      } catch (err) {
+        console.error("Failed to fetch interviewer profile settings:", err);
+      }
+    };
+    fetchProfile();
   }, []);
 
   // Filter sessions
@@ -303,7 +336,8 @@ export default function InterviewerSessionsPage() {
       if (selectedSession.status === "awaiting_confirmation") {
         res = await sessionApi.confirm(parseInt(selectedSession.id), true);
       } else {
-        res = await sessionApi.updateStatus(parseInt(selectedSession.id), "scheduled");
+        const link = selectedPlatform !== "jitsi" ? customLink.trim() : undefined;
+        res = await sessionApi.updateStatus(parseInt(selectedSession.id), "scheduled", undefined, link);
       }
 
       if (res.success) {
@@ -313,6 +347,7 @@ export default function InterviewerSessionsPage() {
           alert(`Session #${selectedSession.id} has been confirmed!`);
         }
         await fetchSessions();
+        setCustomLink("");
       } else {
         alert(res.error?.message || "Failed to confirm session");
       }
@@ -815,10 +850,10 @@ export default function InterviewerSessionsPage() {
       {/* Confirm Modal */}
       {showConfirmModal && selectedSession && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md">
+          <div className={`bg-white rounded-xl w-full ${selectedSession.status === "pending" ? "max-w-lg" : "max-w-md"}`}>
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">
-                {selectedSession.status === "awaiting_confirmation" ? "Confirm Session Occurrence" : "Confirm Session"}
+                {selectedSession.status === "awaiting_confirmation" ? "Confirm Session Occurrence" : "Confirm & Setup Session"}
               </h2>
               <button
                 onClick={() => {
@@ -837,16 +872,122 @@ export default function InterviewerSessionsPage() {
                   {selectedSession.status === "awaiting_confirmation" ? (
                     <>Confirm that your session with <strong>{selectedSession.candidateName}</strong> on <strong>{formatDate(selectedSession.date)}</strong> occurred successfully?</>
                   ) : (
-                    <>Confirm your session with <strong>{selectedSession.candidateName}</strong> on{" "}
+                    <>Accept and confirm your session with <strong>{selectedSession.candidateName}</strong> on{" "}
                     {formatDate(selectedSession.date)} at {formatTime(selectedSession.time)}?</>
                   )}
                 </p>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mb-4">
                 {selectedSession.status === "awaiting_confirmation" 
                   ? "This will complete the session and release the funds to your account."
-                  : "The candidate will be notified and a meeting link will be generated."}
+                  : "Please choose how the video meeting should be created. The candidate and admin will be notified."}
               </p>
+
+              {/* Setup meeting link if status is pending */}
+              {selectedSession.status === "pending" && (
+                <div className="space-y-4 border-t border-gray-100 pt-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Choose Video Platform
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {/* Jitsi Meet */}
+                      <div
+                        onClick={() => setSelectedPlatform("jitsi")}
+                        className={`cursor-pointer rounded-xl border p-2.5 flex flex-col items-center gap-1.5 transition-all text-center ${
+                          selectedPlatform === "jitsi"
+                            ? "border-teal-500 bg-teal-50/50"
+                            : "border-gray-200 hover:border-teal-200"
+                        }`}
+                      >
+                        <Video size={16} className="text-teal-600" />
+                        <span className="text-[11px] font-semibold text-gray-900 leading-tight">Jitsi (Auto)</span>
+                      </div>
+
+                      {/* Google Meet */}
+                      <div
+                        onClick={() => setSelectedPlatform("meet")}
+                        className={`cursor-pointer rounded-xl border p-2.5 flex flex-col items-center gap-1.5 transition-all text-center ${
+                          selectedPlatform === "meet"
+                            ? "border-teal-500 bg-teal-50/50"
+                            : "border-gray-200 hover:border-teal-200"
+                        }`}
+                      >
+                        <Video size={16} className="text-blue-600" />
+                        <span className="text-[11px] font-semibold text-gray-900 leading-tight">Google Meet</span>
+                      </div>
+
+                      {/* Zoom */}
+                      <div
+                        onClick={() => setSelectedPlatform("zoom")}
+                        className={`cursor-pointer rounded-xl border p-2.5 flex flex-col items-center gap-1.5 transition-all text-center ${
+                          selectedPlatform === "zoom"
+                            ? "border-teal-500 bg-teal-50/50"
+                            : "border-gray-200 hover:border-teal-200"
+                        }`}
+                      >
+                        <Video size={16} className="text-blue-500" />
+                        <span className="text-[11px] font-semibold text-gray-900 leading-tight">Zoom</span>
+                      </div>
+
+                      {/* Teams */}
+                      <div
+                        onClick={() => setSelectedPlatform("teams")}
+                        className={`cursor-pointer rounded-xl border p-2.5 flex flex-col items-center gap-1.5 transition-all text-center ${
+                          selectedPlatform === "teams"
+                            ? "border-teal-500 bg-teal-50/50"
+                            : "border-gray-200 hover:border-teal-200"
+                        }`}
+                      >
+                        <Video size={16} className="text-purple-600" />
+                        <span className="text-[11px] font-semibold text-gray-900 leading-tight">Teams</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Platforms info/notes */}
+                  {selectedPlatform === "jitsi" ? (
+                    <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-xs text-teal-800">
+                      <strong>Auto-generation:</strong> We will automatically generate a secure, free Jitsi Meet room link. No manual steps needed.
+                    </div>
+                  ) : (
+                    <div className="space-y-3 bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-gray-700">1. Create meeting externally</span>
+                        <a
+                          href={
+                            selectedPlatform === "meet"
+                              ? "https://meet.google.com/new"
+                              : selectedPlatform === "zoom"
+                              ? "https://zoom.us/meeting/schedule"
+                              : "https://teams.live.com/"
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 bg-white hover:bg-slate-50 border border-gray-300 px-2 py-1.5 rounded-lg font-semibold text-gray-700 transition-colors shadow-xs"
+                        >
+                          <ExternalLink size={12} />
+                          Open {selectedPlatform === "meet" ? "Google Meet" : selectedPlatform === "zoom" ? "Zoom" : "Teams"}
+                        </a>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block font-semibold text-gray-700">2. Paste your meeting URL</label>
+                        <input
+                          type="url"
+                          placeholder={`e.g. https://${selectedPlatform === "meet" ? "meet.google.com" : selectedPlatform === "zoom" ? "zoom.us" : "teams.live.com"}/...`}
+                          value={customLink}
+                          onChange={(e) => setCustomLink(e.target.value)}
+                          className="w-full rounded-lg border border-gray-300 p-2 text-xs focus:border-teal-500 focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                        />
+                        {customLink && !isValidUrl(customLink) && (
+                          <p className="text-[10px] text-red-500">Please enter a valid URL (including http:// or https://)</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-xl">
@@ -855,14 +996,19 @@ export default function InterviewerSessionsPage() {
                   setShowConfirmModal(false);
                   setSelectedSession(null);
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-900"
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmSession}
-                disabled={isProcessing}
-                className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center gap-2"
+                disabled={
+                  isProcessing || 
+                  (selectedSession.status === "pending" && 
+                   selectedPlatform !== "jitsi" && 
+                   (!customLink.trim() || !isValidUrl(customLink)))
+                }
+                className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50 flex items-center gap-2"
               >
                 {isProcessing ? (
                   <>
@@ -870,7 +1016,7 @@ export default function InterviewerSessionsPage() {
                     Confirming...
                   </>
                 ) : (
-                  selectedSession.status === "awaiting_confirmation" ? "Yes, Session Occurred" : "Confirm Session"
+                  selectedSession.status === "awaiting_confirmation" ? "Yes, Session Occurred" : "Confirm & Save Link"
                 )}
               </button>
             </div>

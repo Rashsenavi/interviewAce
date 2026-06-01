@@ -283,8 +283,8 @@ export const sessionApi = {
     return apiClient.get<{ stats: any }>("/sessions/stats");
   },
 
-  updateStatus: async (id: number, status: string, reason?: string) => {
-    return apiClient.put<{ session: any }>(`/sessions/${id}/status`, { status, reason });
+  updateStatus: async (id: number, status: string, reason?: string, meetingLink?: string) => {
+    return apiClient.put<{ session: any }>(`/sessions/${id}/status`, { status, reason, meetingLink });
   },
 
   updateMeetingLink: async (id: number, meetingLink: string) => {
