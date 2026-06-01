@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CreditCard,
   Wallet,
@@ -98,23 +99,38 @@ function getStatusBadge(status: PaymentStatus) {
   }
 }
 
-export default function PaymentsPage() {
+function PaymentsContent() {
+  const searchParams = useSearchParams();
+  const purchaseSuccess = searchParams.get("purchase_success") === "true";
+
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<PaymentStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [packageBalance, setPackageBalance] = useState<number | null>(null);
+  const [buyingPackageId, setBuyingPackageId] = useState<number | null>(null);
+
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await paymentApi.getAll();
+        const [res, balRes] = await Promise.all([
+          paymentApi.getAll(),
+          paymentApi.getPackageBalance(),
+        ]);
+
         if (res.success && res.data?.payments) {
           setPayments(res.data.payments as Payment[]);
         } else {
           setError(res.error?.message || "Failed to load payment history");
+        }
+
+        if (balRes.success && balRes.data) {
+          setPackageBalance(balRes.data.balance);
         }
       } catch {
         setError("An error occurred. Please try again.");
@@ -124,6 +140,65 @@ export default function PaymentsPage() {
     };
     load();
   }, []);
+
+  // Handle return from PayHere package purchase — call verify endpoint as webhook fallback
+  useEffect(() => {
+    const orderId = searchParams.get("order_id");
+    if (!purchaseSuccess || !orderId || !orderId.startsWith("PKG_")) return;
+
+    const verifyAndCredit = async () => {
+      try {
+        const res = await paymentApi.verifyPackagePurchase(orderId);
+        if (res.success && res.data) {
+          if (res.data.credited) {
+            setPurchaseMessage(`🎉 ${res.data.credits} session credit${(res.data.credits ?? 0) > 1 ? "s" : ""} from "${res.data.packageName}" have been added to your account!`);
+          } else {
+            setPurchaseMessage("Your package credits are ready — the payment was already processed.");
+          }
+          // Re-fetch balance to show updated count
+          const balRes = await paymentApi.getPackageBalance();
+          if (balRes.success && balRes.data) {
+            setPackageBalance(balRes.data.balance);
+          }
+        }
+      } catch {
+        // Ignore — webhook may have already processed it
+      }
+    };
+
+    verifyAndCredit();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [purchaseSuccess]);
+
+  const handleBuyPackage = async (packageId: number) => {
+    setBuyingPackageId(packageId);
+    setError(null);
+    try {
+      const response = await paymentApi.initiatePackagePurchase(packageId);
+      if (response.success && response.data) {
+        const { checkoutUrl, formParams } = response.data;
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = checkoutUrl;
+        Object.entries(formParams).forEach(([key, value]) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = value as string;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        setError(response.error?.message || "Failed to initiate package purchase");
+        setBuyingPackageId(null);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("An unexpected error occurred. Please try again.");
+      setBuyingPackageId(null);
+    }
+  };
 
   const completedPayments = payments.filter((p) => p.paymentStatus === "completed");
   const totalSpent = completedPayments.reduce((acc, p) => acc + p.amount, 0);
@@ -145,14 +220,137 @@ export default function PaymentsPage() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Payments & Billing</h1>
-        <p className="text-gray-600">View your payment history and download receipts</p>
+        <p className="text-gray-600">View your payment history, manage package credits, and download receipts</p>
       </div>
+
+      {purchaseSuccess && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 text-emerald-800 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-4 duration-300">
+          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div>
+            <p className="font-semibold">Package Purchased Successfully! 🎉</p>
+            <p className="text-emerald-700 mt-0.5">
+              {purchaseMessage || "Verifying your credits... please wait a moment."}
+            </p>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
           {error}
         </div>
       )}
+
+      {/* Session Credits Balance Banner */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white mb-8 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">Your Session Credits</h2>
+          <p className="text-blue-100 text-sm font-light">
+            Use your active package credits to book mock interviews with any interviewer instantly.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 bg-white/10 px-4 py-3 rounded-xl backdrop-blur-sm">
+          <Wallet className="w-6 h-6 text-blue-100" />
+          <div>
+            <p className="text-3xl font-extrabold leading-none">
+              {packageBalance === null ? "—" : packageBalance}
+            </p>
+            <p className="text-xs text-blue-200 mt-1 font-medium">Credits Available</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Package Purchase Section */}
+      <div className="mb-10">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Session Packages</h2>
+          <p className="text-sm text-gray-500">Buy session credits in bulk to save on interview preparation.</p>
+        </div>
+        
+        <div className="grid gap-6 md:grid-cols-3">
+          {[
+            {
+              id: 1,
+              name: "Starter",
+              price: "LKR 2,500",
+              meta: "1 session credit",
+              validity: "Valid for 30 days",
+              points: ["1 live mock interview", "Summary feedback", "Basic action plan"],
+              cta: "Buy Starter Pack",
+              highlighted: false,
+            },
+            {
+              id: 2,
+              name: "Growth",
+              price: "LKR 12,000",
+              meta: "5 session credits",
+              validity: "Valid for 90 days",
+              points: ["Save LKR 500 total", "Role-focused tracks", "Detailed feedback summary", "Progress trend view"],
+              cta: "Buy Growth Pack",
+              highlighted: true,
+            },
+            {
+              id: 3,
+              name: "Career Sprint",
+              price: "LKR 20,000",
+              meta: "10 session credits",
+              validity: "Valid for 180 days",
+              points: ["Save LKR 5,000 total", "Full prep cycle", "Priority slots booking", "Comprehensive plan"],
+              cta: "Buy Sprint Pack",
+              highlighted: false,
+            },
+          ].map((pkg) => (
+            <div
+              key={pkg.id}
+              className={`rounded-2xl border p-6 flex flex-col justify-between transition-all duration-200 ${
+                pkg.highlighted
+                  ? "border-blue-500 bg-white shadow-lg relative overflow-hidden"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+              }`}
+            >
+              {pkg.highlighted && (
+                <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
+                  Popular
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{pkg.name}</p>
+                <p className="mt-2 text-3xl font-extrabold text-gray-900">{pkg.price}</p>
+                <p className="mt-1 text-sm font-medium text-blue-600">{pkg.meta}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{pkg.validity}</p>
+
+                <ul className="mt-6 space-y-3 text-sm text-gray-600">
+                  {pkg.points.map((point) => (
+                    <li key={point} className="flex items-start gap-2">
+                      <span className="text-emerald-500 font-bold">✓</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                disabled={buyingPackageId !== null}
+                onClick={() => handleBuyPackage(pkg.id)}
+                className={`mt-8 w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all duration-150 flex items-center justify-center gap-2 ${
+                  pkg.highlighted
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg disabled:bg-blue-400"
+                    : "bg-gray-50 hover:bg-gray-100 text-gray-800 border border-gray-200 disabled:bg-gray-100"
+                }`}
+              >
+                {buyingPackageId === pkg.id ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Redirecting to PayHere...
+                  </>
+                ) : (
+                  pkg.cta
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
@@ -377,5 +575,20 @@ export default function PaymentsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full py-12 flex flex-col items-center justify-center">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-gray-500 text-sm">Loading billing details...</p>
+        </div>
+      }
+    >
+      <PaymentsContent />
+    </Suspense>
   );
 }

@@ -89,7 +89,7 @@ export default function SchedulePage() {
   const [message, setMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<number | null>(new Date().getDate());
+  const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [dateSpecificAvailability, setDateSpecificAvailability] = useState<Record<string, TimeSlot[]>>({});
   const [blockedDates, setBlockedDates] = useState<Date[]>([]);
 
@@ -126,7 +126,7 @@ export default function SchedulePage() {
         const profileRes = await interviewerApi.getProfile();
         if (profileRes.success && profileRes.data?.profile) {
           const interviewerId = profileRes.data.profile.id;
-          const availRes = await interviewerApi.getAvailability(interviewerId);
+          const availRes = await interviewerApi.getAvailability(user.id);
           
           if (availRes.success && availRes.data?.slots) {
             const allSlots = availRes.data.slots;
@@ -139,8 +139,8 @@ export default function SchedulePage() {
             allSlots
               .filter((s: any) => !s.isRecurring && s.specificDate)
               .forEach((s: any) => {
-                // Ensure date key is in YYYY-MM-DD format
-                const dateKey = new Date(s.specificDate).toISOString().split('T')[0];
+                // Ensure date key is in YYYY-MM-DD format without timezone shifts
+                const dateKey = s.specificDate.toString().split('T')[0];
                 if (!specificSlots[dateKey]) specificSlots[dateKey] = [];
                 specificSlots[dateKey].push({
                   id: s.id.toString(),
@@ -175,10 +175,10 @@ export default function SchedulePage() {
 
       // 2. Add Date-Specific Slots
       Object.entries(dateSpecificAvailability).forEach(([dateKey, slots]) => {
-        const dateObj = new Date(dateKey);
-        // Correctly map day of week from date
+        // Parse explicitly as UTC to prevent timezone shifts on getUTCDay
+        const dateObj = new Date(`${dateKey}T00:00:00.000Z`);
         const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-        const dayOfWeek = dayNames[dateObj.getDay()];
+        const dayOfWeek = dayNames[dateObj.getUTCDay()];
         
         slots.forEach(slot => {
           if (slot.enabled) {
@@ -535,6 +535,7 @@ export default function SchedulePage() {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   const dateToCheck = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+                  // Past means strictly before today (today is allowed)
                   const isPast = dateToCheck < today;
                   const isToday = day === today.getDate() && 
                                   currentMonth.getMonth() === today.getMonth() && 
@@ -577,9 +578,13 @@ export default function SchedulePage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {selectedDate ? `Availability for ${new Date(currentMonth.getFullYear(), currentMonth.getMonth(), selectedDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "Select a date"}
+                  {selectedDate 
+                    ? `Slots for ${new Date(currentMonth.getFullYear(), currentMonth.getMonth(), selectedDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` 
+                    : "Date Availability"}
                 </h3>
-                <p className="text-xs text-gray-500">One-off slots for this specific date</p>
+                <p className="text-xs text-gray-500">
+                  {selectedDate ? "One-off time slots for this specific date" : "Select a date from the calendar to add slots"}
+                </p>
               </div>
               {selectedDate && (
                 <button
@@ -592,16 +597,16 @@ export default function SchedulePage() {
               )}
             </div>
 
-            {selectedDate && (
+          {selectedDate ? (
               <div className="space-y-3">
                 {(dateSpecificAvailability[getSelectedDateKey()] || []).length === 0 ? (
                   <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-lg">
-                    <p className="text-sm text-gray-400 italic">No one-off slots for this date</p>
+                    <p className="text-sm text-gray-400 italic">No slots added for this date yet</p>
                     <button 
                       onClick={() => addDateSpecificSlot(getSelectedDateKey())}
                       className="text-xs text-teal-600 font-medium mt-2 hover:underline"
                     >
-                      Click to add
+                      + Add availability slot
                     </button>
                   </div>
                 ) : (
@@ -625,6 +630,11 @@ export default function SchedulePage() {
                     </div>
                   ))
                 )}
+              </div>
+            ) : (
+              <div className="text-center py-8 border-2 border-dashed border-gray-100 rounded-lg">
+                <p className="text-sm text-gray-400">👆 Click a date on the calendar above to manage its time slots</p>
+                <p className="text-xs text-gray-300 mt-1">You can add available hours for specific dates</p>
               </div>
             )}
           </div>

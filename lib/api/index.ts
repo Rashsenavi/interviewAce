@@ -400,6 +400,35 @@ export const paymentApi = {
       {}
     );
   },
+
+  /** Get active package credits balance for job seeker */
+  getPackageBalance: async () => {
+    return apiClient.get<{ balance: number }>("/payments/package/balance");
+  },
+
+  /** Initiate PayHere payment for a session package purchase */
+  initiatePackagePurchase: async (packageId: number) => {
+    return apiClient.post<{ checkoutUrl: string; formParams: Record<string, string> }>(
+      "/payments/package/initiate",
+      { packageId }
+    );
+  },
+
+  /** Book a session by consuming 1 package credit */
+  bookWithCredit: async (sessionId: number) => {
+    return apiClient.post<{ success: boolean; paymentId: number; orderId: string }>(
+      "/payments/package/book-with-credit",
+      { sessionId }
+    );
+  },
+
+  /** Fallback: verify/create package purchase after PayHere return_url redirect */
+  verifyPackagePurchase: async (orderId: string) => {
+    return apiClient.post<{ credited: boolean; credits?: number; packageName?: string; reason?: string }>(
+      "/payments/package/verify-purchase",
+      { orderId }
+    );
+  },
 };
 
 // Question API

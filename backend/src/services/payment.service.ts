@@ -1,4 +1,4 @@
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, asc } from "drizzle-orm";
 import { db } from "../config/database";
 import {
   payments,
@@ -9,6 +9,8 @@ import {
   jobSeekers,
   users,
   admins,
+  packageDeals,
+  packagePurchases,
 } from "../db/schema";
 import {
   generatePayHereHash,
@@ -178,6 +180,41 @@ export const processWebhook = async (body: Record<string, string>) => {
   }
 
   const rawStatus = parseInt(status_code, 10);
+
+  // ─── PACKAGE PURCHASE WEBHOOK ─────────────────────────────────────────────
+  if (order_id.startsWith("PKG_")) {
+    const parts = order_id.split("_");
+    const jobSeekerId = parseInt(parts[1], 10);
+    const packageId = parseInt(parts[2], 10);
+
+    if (rawStatus === 2) {
+      const [deal] = await db
+        .select()
+        .from(packageDeals)
+        .where(eq(packageDeals.id, packageId))
+        .limit(1);
+
+      if (deal) {
+        const now = new Date();
+        const expiryDate = new Date();
+        expiryDate.setDate(now.getDate() + (deal.validityDays || 30));
+
+        await db.insert(packagePurchases).values({
+          jobSeekerId,
+          packageId,
+          totalCredits: deal.sessionCount,
+          creditsRemaining: deal.sessionCount,
+          purchaseDate: now,
+          expiryDate,
+          isActive: true,
+        });
+
+        console.log(`[PayHere Webhook] Package purchase successful for Job Seeker #${jobSeekerId}, Package #${packageId}`);
+        return { success: true, status: "package_purchased" };
+      }
+    }
+    return { success: true, status: "package_pending" };
+  }
 
   // Find the payment record by order ID
   const [payment] = await db
@@ -633,6 +670,270 @@ export const cancelSessionPayment = async (sessionId: number, cancelledByUserId:
   return { refundAmount, reason, newStatus };
 };
 
+// ─── PACKAGE DEALS & CREDIT BOOKINGS ─────────────────────────────────────────
+
+/**
+ * Fallback for when the PayHere webhook doesn't fire (common in dev / localhost).
+ * Called from the return_url after PayHere redirects the user back.
+ * Parses the PKG_ order ID and idempotently creates the packagePurchase record.
+ *
+ * orderId format: PKG_{jobSeekerId}_{packageId}_{timestamp}
+ */
+export const verifyPackagePurchase = async (orderId: string, userId: number) => {
+  // Validate it looks like a package order
+  if (!orderId.startsWith("PKG_")) {
+    throw new Error("Not a package order ID");
+  }
+
+  // Resolve the job seeker making the request
+  const [jobSeeker] = await db
+    .select({ id: jobSeekers.id })
+    .from(jobSeekers)
+    .where(eq(jobSeekers.userId, userId))
+    .limit(1);
+
+  if (!jobSeeker) throw new Error("Job seeker not found");
+
+  // Parse the order ID
+  const parts = orderId.split("_");
+  // PKG_<jobSeekerId>_<packageId>_<timestamp>
+  if (parts.length < 4) throw new Error("Invalid package order ID format");
+
+  const orderJobSeekerId = parseInt(parts[1], 10);
+  const packageId = parseInt(parts[2], 10);
+
+  // Ensure this order belongs to the requesting user
+  if (orderJobSeekerId !== jobSeeker.id) {
+    throw new Error("Order does not belong to this user");
+  }
+
+  // Check if a purchase already exists for this order (idempotency)
+  // We store the orderId in a separate field on packagePurchases — but since we don't have one,
+  // we'll check if a purchase was created after the timestamp encoded in the orderId.
+  const orderTimestamp = parseInt(parts[3], 10);
+  const orderDate = new Date(orderTimestamp);
+
+  const existingPurchases = await db
+    .select({ id: packagePurchases.id })
+    .from(packagePurchases)
+    .where(
+      and(
+        eq(packagePurchases.jobSeekerId, jobSeeker.id),
+        eq(packagePurchases.packageId, packageId),
+        sql`purchase_date >= ${orderDate.toISOString()}::timestamptz - interval '5 minutes'`
+      )
+    )
+    .limit(1);
+
+  if (existingPurchases.length > 0) {
+    // Already processed (webhook fired before return_url callback)
+    return { credited: false, reason: "already_processed" };
+  }
+
+  // Get the package details
+  const [deal] = await db
+    .select()
+    .from(packageDeals)
+    .where(eq(packageDeals.id, packageId))
+    .limit(1);
+
+  if (!deal) throw new Error("Package deal not found");
+
+  const now = new Date();
+  const expiryDate = new Date();
+  expiryDate.setDate(now.getDate() + (deal.validityDays || 30));
+
+  await db.insert(packagePurchases).values({
+    jobSeekerId: jobSeeker.id,
+    packageId,
+    totalCredits: deal.sessionCount,
+    creditsRemaining: deal.sessionCount,
+    purchaseDate: now,
+    expiryDate,
+    isActive: true,
+  });
+
+  console.log(`[verifyPackagePurchase] Created package purchase for Job Seeker #${jobSeeker.id}, Package #${packageId} (fallback)`);
+  return { credited: true, credits: deal.sessionCount, packageName: deal.packageName };
+};
+
+/**
+ * Prepare PayHere checkout parameters for purchasing a package deal.
+ */
+export const initiatePackagePurchase = async (packageId: number, userId: number) => {
+  const [deal] = await db
+    .select()
+    .from(packageDeals)
+    .where(eq(packageDeals.id, packageId))
+    .limit(1);
+
+  if (!deal) throw new Error("Package not found");
+  if (!deal.isActive) throw new Error("Package is inactive");
+
+  const [jobSeeker] = await db
+    .select({ id: jobSeekers.id })
+    .from(jobSeekers)
+    .where(eq(jobSeekers.userId, userId))
+    .limit(1);
+
+  if (!jobSeeker) throw new Error("Job seeker not found");
+
+  const [userInfo] = await db
+    .select({ firstName: users.firstName, lastName: users.lastName, email: users.email, phone: users.phoneNumber })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const amount = parseFloat(deal.price);
+  const orderId = `PKG_${jobSeeker.id}_${packageId}_${Date.now()}`;
+  const currency = "LKR";
+
+  const hash = generatePayHereHash(MERCHANT_ID, orderId, amount, currency, MERCHANT_SECRET);
+
+  return {
+    checkoutUrl: CHECKOUT_URL,
+    formParams: {
+      merchant_id: MERCHANT_ID,
+      return_url: `${APP_URL}/job-seeker/payments?purchase_success=true&order_id=${orderId}`,
+      cancel_url: `${APP_URL}/job-seeker/payments`,
+      notify_url: process.env.PAYHERE_NOTIFY_URL || "http://localhost:3001/api/payments/webhook",
+      order_id: orderId,
+      items: `Session Package - ${deal.packageName} (${deal.sessionCount} Credits)`,
+      currency,
+      amount: amount.toFixed(2),
+      first_name: userInfo?.firstName || "",
+      last_name: userInfo?.lastName || "",
+      email: userInfo?.email || "",
+      phone: userInfo?.phone || "",
+      address: "N/A",
+      city: "Colombo",
+      country: "Sri Lanka",
+      hash,
+    },
+  };
+};
+
+/**
+ * Retrieve the active package credit balance for a job seeker.
+ */
+export const getPackageBalance = async (userId: number) => {
+  const [jobSeeker] = await db
+    .select({ id: jobSeekers.id })
+    .from(jobSeekers)
+    .where(eq(jobSeekers.userId, userId))
+    .limit(1);
+
+  if (!jobSeeker) {
+    return { balance: 0 };
+  }
+
+  const activePurchases = await db
+    .select()
+    .from(packagePurchases)
+    .where(
+      and(
+        eq(packagePurchases.jobSeekerId, jobSeeker.id),
+        eq(packagePurchases.isActive, true),
+        sql`credits_remaining > 0`,
+        sql`expiry_date > NOW()`
+      )
+    );
+
+  const balance = activePurchases.reduce((sum, p) => sum + p.creditsRemaining, 0);
+  return { balance };
+};
+
+/**
+ * Book a mock interview session by consuming 1 package credit.
+ */
+export const bookSessionWithCredit = async (sessionId: number, userId: number) => {
+  const [jobSeeker] = await db
+    .select({ id: jobSeekers.id })
+    .from(jobSeekers)
+    .where(eq(jobSeekers.userId, userId))
+    .limit(1);
+
+  if (!jobSeeker) throw new Error("Job seeker not found");
+
+  const [session] = await db
+    .select()
+    .from(interviewSessions)
+    .where(eq(interviewSessions.id, sessionId))
+    .limit(1);
+
+  if (!session) throw new Error("Session not found");
+  if (session.jobSeekerId !== jobSeeker.id) throw new Error("Unauthorized");
+  if (session.sessionStatus !== "pending") throw new Error("Session is not in pending state");
+
+  const [activePurchase] = await db
+    .select()
+    .from(packagePurchases)
+    .where(
+      and(
+        eq(packagePurchases.jobSeekerId, jobSeeker.id),
+        eq(packagePurchases.isActive, true),
+        sql`credits_remaining > 0`,
+        sql`expiry_date > NOW()`
+      )
+    )
+    .orderBy(asc(packagePurchases.purchaseDate))
+    .limit(1);
+
+  if (!activePurchase) throw new Error("No active session credits available");
+
+  return await db.transaction(async (tx) => {
+    // 1. Decrement credits remaining
+    await tx
+      .update(packagePurchases)
+      .set({
+        creditsRemaining: activePurchase.creditsRemaining - 1,
+      })
+      .where(eq(packagePurchases.id, activePurchase.id));
+
+    // 2. Create completed payment record for the session
+    const amount = parseFloat(session.priceAmount);
+    const [interviewer] = await tx
+      .select({ commissionRate: interviewers.commissionRate })
+      .from(interviewers)
+      .where(eq(interviewers.id, session.interviewerId))
+      .limit(1);
+
+    const commissionRate = parseFloat(interviewer?.commissionRate || "20");
+    const baseRate = amount / (1 + commissionRate / 100);
+    const platformCommission = Math.round((amount - baseRate) * 100) / 100;
+    const interviewerPayout = Math.round(baseRate * 100) / 100;
+    const orderId = `CREDIT_${sessionId}_${Date.now()}`;
+
+    const [paymentRecord] = await tx
+      .insert(payments)
+      .values({
+        sessionId,
+        jobSeekerId: jobSeeker.id,
+        interviewerId: session.interviewerId,
+        amount: amount.toFixed(2),
+        platformCommission: platformCommission.toFixed(2),
+        interviewerPayout: interviewerPayout.toFixed(2),
+        currency: "LKR",
+        paymentMethod: "Credit Package Voucher",
+        payhereOrderId: orderId,
+        paymentStatus: "completed",
+        paymentDate: new Date(),
+      })
+      .returning();
+
+    // 3. Update session status to 'scheduled' since payment is complete
+    await tx
+      .update(interviewSessions)
+      .set({ sessionStatus: "scheduled", updatedAt: new Date() })
+      .where(eq(interviewSessions.id, sessionId));
+
+    // Send notifications
+    await notifySessionStateChange(sessionId, "payment_success");
+
+    return { success: true, paymentId: paymentRecord.id, orderId };
+  });
+};
+
 export default {
   initiatePayment,
   processWebhook,
@@ -643,4 +944,8 @@ export default {
   releasePayouts,
   autoReleaseOverduePayouts,
   cancelSessionPayment,
+  initiatePackagePurchase,
+  getPackageBalance,
+  bookSessionWithCredit,
+  verifyPackagePurchase,
 };

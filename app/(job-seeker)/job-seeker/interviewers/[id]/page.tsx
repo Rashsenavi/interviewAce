@@ -41,12 +41,19 @@ const generateDates = () => {
   for (let i = 0; i < 14; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const dayNum = date.getDate();
+    const dayStr = String(dayNum).padStart(2, '0');
+    const full = `${year}-${month}-${dayStr}`;
+
     dates.push({
       date,
       day: date.toLocaleDateString("en-US", { weekday: "short" }),
-      dayNum: date.getDate(),
+      dayNum,
       month: date.toLocaleDateString("en-US", { month: "short" }),
-      full: date.toISOString().split("T")[0],
+      full,
     });
   }
   return dates;
@@ -70,15 +77,18 @@ export default function InterviewerProfilePage() {
   const [notes, setNotes] = useState("");
   const [dateStartIndex, setDateStartIndex] = useState(0);
   const [isBooking, setIsBooking] = useState(false);
+  const [creditBalance, setCreditBalance] = useState<number>(0);
+  const [useCredit, setUseCredit] = useState(false);
 
   // Fetch interviewer data on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [profileRes, availRes] = await Promise.all([
+        const [profileRes, availRes, balRes] = await Promise.all([
           interviewerApi.getById(parseInt(userId)),
-          interviewerApi.getAvailability(parseInt(userId))
+          interviewerApi.getAvailability(parseInt(userId)),
+          paymentApi.getPackageBalance()
         ]);
 
         if (profileRes.success && profileRes.data?.interviewer) {
@@ -89,6 +99,13 @@ export default function InterviewerProfilePage() {
 
         if (availRes.success && availRes.data?.slots) {
           setAvailability(availRes.data.slots);
+        }
+
+        if (balRes.success && balRes.data) {
+          setCreditBalance(balRes.data.balance);
+          if (balRes.data.balance > 0) {
+            setUseCredit(true);
+          }
         }
       } catch (err) {
         console.error("Error fetching interviewer data:", err);
@@ -112,11 +129,15 @@ export default function InterviewerProfilePage() {
     
     const specificSlots = availability.filter(s => {
       if (!s.specificDate) return false;
-      const sDate = new Date(s.specificDate).toISOString().split('T')[0];
+      const sDate = s.specificDate.toString().split('T')[0];
       return sDate === dateString;
     });
 
-    const slotsToUse = specificSlots;
+    const recurringSlots = availability.filter(s => {
+      return !s.specificDate && s.dayOfWeek === dayName;
+    });
+
+    const slotsToUse = specificSlots.length > 0 ? specificSlots : recurringSlots;
     
     const slots: any[] = [];
     slotsToUse.forEach(slot => {
@@ -124,17 +145,23 @@ export default function InterviewerProfilePage() {
       // This logic assumes slots are defined as ranges (e.g. 09:00 to 17:00)
       let current = parseInt(slot.startTime.split(":")[0]);
       const startMin = parseInt(slot.startTime.split(":")[1]);
-      const end = parseInt(slot.endTime.split(":")[0]);
+      let end = parseInt(slot.endTime.split(":")[0]);
       const endMin = parseInt(slot.endTime.split(":")[1]);
+      
+      // If end time is earlier than start time, it crosses midnight (e.g. 09:00 to 02:00)
+      if (end < current) {
+        end += 24;
+      }
       
       // Handle 30-min increments if needed, but keeping 1-hour chunks for simplicity in this UI
       while (current < end || (current === end && endMin > 0)) {
-        const timeStr = `${current.toString().padStart(2, "0")}:${startMin === 30 ? "30" : "00"}`;
-        const displayTime = current < 12 
-          ? `${current === 0 ? 12 : current}:${startMin === 30 ? "30" : "00"} AM` 
-          : current === 12 
+        const hourOfDay = current % 24;
+        const timeStr = `${hourOfDay.toString().padStart(2, "0")}:${startMin === 30 ? "30" : "00"}`;
+        const displayTime = hourOfDay < 12 
+          ? `${hourOfDay === 0 ? 12 : hourOfDay}:${startMin === 30 ? "30" : "00"} AM` 
+          : hourOfDay === 12 
             ? `12:${startMin === 30 ? "30" : "00"} PM` 
-            : `${current - 12}:${startMin === 30 ? "30" : "00"} PM`;
+            : `${hourOfDay - 12}:${startMin === 30 ? "30" : "00"} PM`;
             
         slots.push({ time: timeStr, displayTime, available: true });
         current++;
@@ -144,7 +171,28 @@ export default function InterviewerProfilePage() {
     return slots.sort((a, b) => a.time.localeCompare(b.time));
   };
 
-  const timeSlots = selectedDate ? getTimeSlotsForDate(selectedDate) : [];
+  const timeSlots = (() => {
+    if (!selectedDate) return [];
+    const rawSlots = getTimeSlotsForDate(selectedDate);
+
+    // Filter out past time slots when the selected date is today
+    const todayStr = (() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    })();
+
+    if (selectedDate === todayStr) {
+      const nowHour = new Date().getHours();
+      const nowMinute = new Date().getMinutes();
+      return rawSlots.filter((slot) => {
+        const [slotHour, slotMin] = slot.time.split(":").map(Number);
+        // Allow the slot only if its start time is strictly in the future
+        return slotHour > nowHour || (slotHour === nowHour && slotMin > nowMinute);
+      });
+    }
+
+    return rawSlots;
+  })();
   const visibleDates = dates.slice(dateStartIndex, dateStartIndex + 7);
 
   const handleBookSession = async () => {
@@ -174,30 +222,42 @@ export default function InterviewerProfilePage() {
 
       const sessionId = sessionResponse.data.session.id;
 
-      // Step 2: Initiate PayHere payment
-      const paymentResponse = await paymentApi.initiate(sessionId);
+      if (useCredit) {
+        // Option 1: Book using package credit
+        const creditBookResponse = await paymentApi.bookWithCredit(sessionId);
+        if (creditBookResponse.success && creditBookResponse.data) {
+          router.push(`/job-seeker/booking-confirmation?order_id=${creditBookResponse.data.orderId}&session_id=${sessionId}`);
+        } else {
+          alert(creditBookResponse.error?.message || "Failed to book session with credit package voucher. Please check your credit balance or try standard checkout.");
+          setIsBooking(false);
+        }
+      } else {
+        // Option 2: Standard PayHere payment
+        // Step 2: Initiate PayHere payment
+        const paymentResponse = await paymentApi.initiate(sessionId);
 
-      if (!paymentResponse.success || !paymentResponse.data) {
-        alert(paymentResponse.error?.message || "Failed to initiate payment");
-        setIsBooking(false);
-        return;
+        if (!paymentResponse.success || !paymentResponse.data) {
+          alert(paymentResponse.error?.message || "Failed to initiate payment");
+          setIsBooking(false);
+          return;
+        }
+
+        // Step 3: Redirect to PayHere via dynamic form submission
+        const { checkoutUrl, formParams } = paymentResponse.data;
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = checkoutUrl;
+        Object.entries(formParams).forEach(([key, value]) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = value as string;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+        // Note: page will navigate away — no need to setIsBooking(false)
       }
-
-      // Step 3: Redirect to PayHere via dynamic form submission
-      const { checkoutUrl, formParams } = paymentResponse.data;
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = checkoutUrl;
-      Object.entries(formParams).forEach(([key, value]) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = key;
-        input.value = value as string;
-        form.appendChild(input);
-      });
-      document.body.appendChild(form);
-      form.submit();
-      // Note: page will navigate away — no need to setIsBooking(false)
     } catch (err) {
       console.error("Booking error:", err);
       alert("An unexpected error occurred while booking.");
@@ -435,6 +495,25 @@ export default function InterviewerProfilePage() {
               </button>
             </div>
 
+            {creditBalance > 0 && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 px-6 py-4 flex items-center justify-between animate-in fade-in duration-300">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold shadow-inner">
+                    ★
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-blue-900">Premium Account Active</p>
+                    <p className="text-xs text-blue-700 font-medium">
+                      You have <strong className="font-extrabold">{creditBalance}</strong> active package credits. This booking is covered!
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-blue-600/10 px-3 py-1 rounded-full text-xs font-bold text-blue-700 uppercase tracking-wider">
+                  Plan Credit
+                </div>
+              </div>
+            )}
+
             <div className="p-6 space-y-6">
               {/* Session Type */}
               <div>
@@ -615,9 +694,40 @@ export default function InterviewerProfilePage() {
                         </div>
                         <div className="flex justify-between text-gray-900 font-bold text-base mt-2">
                           <span>Total</span>
-                          <span>LKR {totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span>
+                            {useCredit
+                              ? "1 Session Credit"
+                              : `LKR ${totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                          </span>
                         </div>
                       </div>
+
+                      {creditBalance > 0 ? (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <label className="flex items-start gap-3 cursor-pointer p-3 bg-blue-50/50 border border-blue-100 rounded-xl hover:bg-blue-50 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={useCredit}
+                              onChange={(e) => setUseCredit(e.target.checked)}
+                              className="mt-1 h-4.5 w-4.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div className="text-sm">
+                              <p className="font-semibold text-blue-900">Use 1 Session Credit Voucher</p>
+                              <p className="text-blue-700 text-xs mt-0.5">
+                                You have <strong className="font-extrabold">{creditBalance}</strong> credits remaining. Bypasses sandbox card payment.
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="mt-4 pt-4 border-t border-gray-200 text-center text-xs text-gray-500 bg-gray-100/50 rounded-xl p-3">
+                          💡 You have <strong className="font-bold">0</strong> active session credits. You can purchase packages on the{" "}
+                          <a href="/job-seeker/payments" target="_blank" className="text-blue-600 hover:underline font-semibold">
+                            Payments Dashboard
+                          </a>{" "}
+                          to book sessions in bulk and save.
+                        </div>
+                      )}
                     </div>
                   </div>
                 );

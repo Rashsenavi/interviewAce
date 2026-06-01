@@ -168,6 +168,103 @@ router.post(
 );
 
 /**
+ * POST /api/payments/package/verify-purchase
+ * Fallback endpoint called from return_url after a package PayHere payment.
+ * Idempotently creates the packagePurchase record in case webhook didn't fire.
+ */
+router.post(
+  "/package/verify-purchase",
+  authenticate,
+  authorize("job_seeker"),
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: "NOT_AUTHENTICATED" } });
+    }
+
+    const { orderId } = req.body;
+    if (!orderId || typeof orderId !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_INPUT", message: "orderId (string) is required" },
+      });
+    }
+
+    const result = await paymentService.verifyPackagePurchase(orderId, req.user.id);
+    res.json({ success: true, data: result });
+  })
+);
+
+/**
+ * POST /api/payments/package/initiate
+ * Job seeker initiates purchase of a session package.
+ */
+router.post(
+  "/package/initiate",
+  authenticate,
+  authorize("job_seeker"),
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: "NOT_AUTHENTICATED" } });
+    }
+
+    const { packageId } = req.body;
+    if (!packageId || typeof packageId !== "number") {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_INPUT", message: "packageId (number) is required" },
+      });
+    }
+
+    const result = await paymentService.initiatePackagePurchase(packageId, req.user.id);
+    res.json({ success: true, data: result });
+  })
+);
+
+/**
+ * GET /api/payments/package/balance
+ * Get current active package credits balance for the logged-in job seeker.
+ */
+router.get(
+  "/package/balance",
+  authenticate,
+  authorize("job_seeker"),
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: "NOT_AUTHENTICATED" } });
+    }
+
+    const result = await paymentService.getPackageBalance(req.user.id);
+    res.json({ success: true, data: result });
+  })
+);
+
+/**
+ * POST /api/payments/package/book-with-credit
+ * Book a pending session by consuming 1 package credit.
+ */
+router.post(
+  "/package/book-with-credit",
+  authenticate,
+  authorize("job_seeker"),
+  asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: "NOT_AUTHENTICATED" } });
+    }
+
+    const { sessionId } = req.body;
+    if (!sessionId || typeof sessionId !== "number") {
+      return res.status(400).json({
+        success: false,
+        error: { code: "INVALID_INPUT", message: "sessionId (number) is required" },
+      });
+    }
+
+    const result = await paymentService.bookSessionWithCredit(sessionId, req.user.id);
+    res.json({ success: true, data: result });
+  })
+);
+
+/**
  * POST /api/payments/cancel/:sessionId
  * Cancel payment for a session (refund calculation included).
  */

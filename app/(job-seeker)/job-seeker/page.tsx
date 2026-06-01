@@ -16,7 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { sessionApi, interviewerApi } from "@/lib/api";
+import { sessionApi, interviewerApi, paymentApi } from "@/lib/api";
 
 interface SessionData {
   id: number;
@@ -169,14 +169,16 @@ export default function JobSeekerDashboardPage() {
   const [upcomingSessions, setUpcomingSessions] = useState<SessionData[]>([]);
   const [recommendedInterviewers, setRecommendedInterviewers] = useState<RecommendedInterviewer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
 
   useEffect(() => {
     const loadDashboard = async () => {
       try {
-        const [statsRes, sessionsRes, interviewersRes] = await Promise.all([
+        const [statsRes, sessionsRes, interviewersRes, balRes] = await Promise.all([
           sessionApi.getStats(),
           sessionApi.getAll({ upcoming: true }),
           interviewerApi.getAll({ isVerified: true, sortBy: "rating", sortOrder: "desc" }),
+          paymentApi.getPackageBalance(),
         ]);
 
         if (statsRes.success && statsRes.data?.stats) setStats(statsRes.data.stats);
@@ -185,6 +187,11 @@ export default function JobSeekerDashboardPage() {
         }
         if (interviewersRes.success && interviewersRes.data?.interviewers) {
           setRecommendedInterviewers((interviewersRes.data.interviewers as RecommendedInterviewer[]).slice(0, 3));
+        }
+        if (balRes.success && balRes.data) {
+          setCreditBalance(balRes.data.balance);
+        } else {
+          setCreditBalance(0);
         }
       } catch (err) {
         console.error("Dashboard load error:", err);
@@ -206,8 +213,28 @@ export default function JobSeekerDashboardPage() {
       <div className="rounded-xl border border-slate-200 bg-white p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Welcome back, {userName}</h1>
+            <div className="flex items-center gap-3 flex-wrap mb-1">
+              <h1 className="text-2xl font-semibold text-slate-900">Welcome back, {userName}</h1>
+              {/* Account type badge */}
+              {!loading && creditBalance !== null && (
+                creditBalance > 0 ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+                    ★ Premium Account
+                    <span className="ml-1 bg-white/20 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold">{creditBalance} credits</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500">
+                    Free Account
+                  </span>
+                )
+              )}
+            </div>
             <p className="mt-1 text-sm text-slate-400">Here's your interview preparation progress</p>
+            {!loading && creditBalance !== null && creditBalance > 0 && (
+              <p className="mt-1 text-xs text-orange-600 font-medium">
+                You have <strong>{creditBalance}</strong> session credit{creditBalance !== 1 ? "s" : ""} ready — book a session using your package!
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Link
