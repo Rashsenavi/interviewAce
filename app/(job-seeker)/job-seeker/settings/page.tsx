@@ -7,7 +7,6 @@ import {
   Lock,
   CreditCard,
   Globe,
-  Moon,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -78,7 +77,6 @@ export default function SettingsPage() {
   // --- Preferences State ---
   const [language, setLanguage] = useState("English");
   const [timezone, setTimezone] = useState("Asia/Colombo (GMT+5:30)");
-  const [darkMode, setDarkMode] = useState(false);
   const [preferencesSuccess, setPreferencesSuccess] = useState<string | null>(null);
 
   // --- Load Profile Data ---
@@ -122,7 +120,6 @@ export default function SettingsPage() {
 
       // Preferences
       setTimezone(localStorage.getItem("settings_timezone") || "Asia/Colombo (GMT+5:30)");
-      setDarkMode(localStorage.getItem("settings_darkMode") === "true");
 
       // Cards
       const storedCards = localStorage.getItem("settings_cards");
@@ -304,13 +301,6 @@ export default function SettingsPage() {
     setTimezone(val);
     localStorage.setItem("settings_timezone", val);
     setPreferencesSuccess("Preference timezone updated.");
-    setTimeout(() => setPreferencesSuccess(null), 3000);
-  };
-
-  const handleDarkModeToggle = (val: boolean) => {
-    setDarkMode(val);
-    localStorage.setItem("settings_darkMode", String(val));
-    setPreferencesSuccess(`Dark Mode ${val ? "enabled" : "disabled"}.`);
     setTimeout(() => setPreferencesSuccess(null), 3000);
   };
 
@@ -817,18 +807,6 @@ export default function SettingsPage() {
                     <option value="UTC">UTC</option>
                   </select>
                 </div>
-                <label className="flex items-center justify-between p-3.5 border border-slate-100 hover:bg-slate-50/20 rounded-xl cursor-pointer select-none">
-                  <div className="flex items-center gap-2.5">
-                    <Moon className="w-5 h-5 text-slate-400" />
-                    <span className="text-sm font-semibold text-slate-700">Dark Mode</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={darkMode}
-                    onChange={(e) => handleDarkModeToggle(e.target.checked)}
-                    className="w-5 h-5 text-indigo-600 rounded-lg border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
-                  />
-                </label>
               </div>
             </div>
           )}
