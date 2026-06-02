@@ -291,7 +291,22 @@ export default function DashboardShell({ role, children }: DashboardShellProps) 
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
+
+  React.useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        router.push("/login");
+      } else if (user.userType !== role) {
+        const dashboardRoutes: Record<string, string> = {
+          job_seeker: "/job-seeker",
+          interviewer: "/interviewer",
+          admin: "/admin",
+        };
+        router.push(dashboardRoutes[user.userType] || "/");
+      }
+    }
+  }, [user, isLoading, role, router]);
 
   const config = roleConfig[role];
 
@@ -317,6 +332,17 @@ export default function DashboardShell({ role, children }: DashboardShellProps) 
   const userDisplayName = user?.firstName
     ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
     : "Account";
+
+  if (isLoading || !user || user.userType !== role) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900" />
+          <p className="text-sm font-medium text-slate-500">Checking authorization...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogout = () => {
     logout();

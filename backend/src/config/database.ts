@@ -18,7 +18,7 @@ const pool = globalForPostgres.pgPool ?? new Pool({
   ssl: { rejectUnauthorized: false },
   keepAlive: true,
   idleTimeoutMillis: 10000, // Proactively close idle connections to avoid AWS NAT drops
-  connectionTimeoutMillis: 10000, // Fail fast instead of hanging for 2 minutes
+  connectionTimeoutMillis: 30000, // Wait up to 30s to allow Supabase database wake-up
 });
 
 if (process.env.NODE_ENV !== "production") {

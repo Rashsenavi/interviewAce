@@ -1,4 +1,4 @@
-import { interviewers, users, interviewSessions, payments, jobSeekers } from "../db/schema";
+import { interviewers, users, interviewSessions, payments, jobSeekers, sampleVideos } from "../db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "../config/database";
@@ -222,13 +222,27 @@ export const getPlatformAnalytics = async () => {
       scheduledDate: interviewSessions.scheduledDate,
       sessionStatus: interviewSessions.sessionStatus,
       priceAmount: interviewSessions.priceAmount,
+      meetingLink: interviewSessions.meetingLink,
+      sessionType: interviewSessions.sessionType,
+      duration: interviewSessions.duration,
+      notes: interviewSessions.notes,
+      recordingUrl: interviewSessions.recordingUrl,
+      cancellationReason: interviewSessions.cancellationReason,
+      disputeReason: interviewSessions.disputeReason,
+      sampleVideo: {
+        id: sampleVideos.id,
+        videoUrl: sampleVideos.videoUrl,
+        adminApprovalStatus: sampleVideos.adminApprovalStatus,
+      },
       jobSeeker: {
         firstName: users.firstName,
         lastName: users.lastName,
+        email: users.email,
       },
       interviewer: {
         firstName: intUsers.firstName,
         lastName: intUsers.lastName,
+        email: intUsers.email,
       },
     })
     .from(interviewSessions)
@@ -236,6 +250,7 @@ export const getPlatformAnalytics = async () => {
     .innerJoin(users, eq(jobSeekers.userId, users.id))
     .innerJoin(interviewers, eq(interviewSessions.interviewerId, interviewers.id))
     .innerJoin(intUsers, eq(interviewers.userId, intUsers.id))
+    .leftJoin(sampleVideos, eq(interviewSessions.id, sampleVideos.sessionId))
     .orderBy(desc(interviewSessions.createdAt))
     .limit(5);
 
