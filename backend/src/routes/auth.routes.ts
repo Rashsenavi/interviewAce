@@ -71,4 +71,10 @@ router.post(
  */
 router.put("/reset-password", asyncHandler(authController.resetPassword));
 
+/**
+ * POST /api/auth/change-password
+ * Change password when logged in
+ */
+router.post("/change-password", authenticate, asyncHandler(authController.changePassword));
+
 export default router;

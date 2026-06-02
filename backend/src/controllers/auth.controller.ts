@@ -55,6 +55,11 @@ const requestEmailVerificationSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "New password must be at least 8 characters"),
+});
+
 /**
  * POST /api/auth/register/job-seeker
  * Register a new job seeker
@@ -325,6 +330,56 @@ export const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /api/auth/change-password
+ * Change password when logged in
+ */
+export const changePassword = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: "NOT_AUTHENTICATED",
+        message: "User not authenticated",
+      },
+    });
+  }
+
+  try {
+    const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+    await authService.changePassword(req.user.id, currentPassword, newPassword);
+
+    res.json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Invalid input data",
+          details: error.errors,
+        },
+      });
+    }
+
+    if (error instanceof Error) {
+      const err = error as Error & { status?: number; code?: string };
+      return res.status(err.status || 400).json({
+        success: false,
+        error: {
+          code: err.code || "BAD_REQUEST",
+          message: err.message,
+        },
+      });
+    }
+
+    throw error;
+  }
+};
+
 export default {
   registerJobSeeker,
   registerInterviewer,
@@ -334,4 +389,5 @@ export default {
   verifyEmail,
   forgotPassword,
   resetPassword,
+  changePassword,
 };

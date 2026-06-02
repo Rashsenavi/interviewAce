@@ -468,6 +468,50 @@ export const resetPassword = async (token: string, newPassword: string) => {
   return { userId: user.id, email: user.email };
 };
 
+/**
+ * Change password when logged in
+ */
+export const changePassword = async (
+  userId: number,
+  currentPassword: string,
+  newPassword: string
+) => {
+  const [user] = await db
+    .select({
+      id: users.id,
+      passwordHash: users.passwordHash,
+      isActive: users.isActive,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!user) {
+    throw getSafeError("User not found", 404, "USER_NOT_FOUND");
+  }
+
+  if (!user.isActive) {
+    throw getSafeError("Account is deactivated", 403, "ACCOUNT_DEACTIVATED");
+  }
+
+  const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!isPasswordValid) {
+    throw getSafeError("Incorrect current password", 400, "INCORRECT_PASSWORD");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await db
+    .update(users)
+    .set({
+      passwordHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+
+  return { success: true };
+};
+
 export default {
   registerJobSeeker,
   registerInterviewer,
@@ -477,4 +521,5 @@ export default {
   verifyEmail,
   forgotPassword,
   resetPassword,
+  changePassword,
 };

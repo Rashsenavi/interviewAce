@@ -14,7 +14,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { jobSeekerApi } from "@/lib/api";
+import { jobSeekerApi, authApi } from "@/lib/api";
 
 const settingsSections = [
   { id: "profile", name: "Profile Settings", icon: User },
@@ -62,7 +62,6 @@ export default function SettingsPage() {
   const [isSavingSecurity, setIsSavingSecurity] = useState(false);
   const [securitySuccess, setSecuritySuccess] = useState<string | null>(null);
   const [securityError, setSecurityError] = useState<string | null>(null);
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
   // --- Payments State ---
   const [cards, setCards] = useState<CreditCardInfo[]>([]);
@@ -115,8 +114,7 @@ export default function SettingsPage() {
       setFeedbackNotifications(localStorage.getItem("settings_feedbackNotifications") !== "false");
       setMarketingEmails(localStorage.getItem("settings_marketingEmails") === "true");
 
-      // Security (Mocks)
-      setTwoFactorEnabled(localStorage.getItem("settings_twoFactor") === "true");
+      // Security (Mocks) - None
 
       // Preferences
       setTimezone(localStorage.getItem("settings_timezone") || "Asia/Colombo (GMT+5:30)");
@@ -184,7 +182,7 @@ export default function SettingsPage() {
     setTimeout(() => setNotificationSuccess(null), 3000);
   };
 
-  // --- Save Security Mock ---
+  // --- Save Security Real ---
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setSecuritySuccess(null);
@@ -194,8 +192,8 @@ export default function SettingsPage() {
       setSecurityError("All password fields are required.");
       return;
     }
-    if (newPassword.length < 6) {
-      setSecurityError("New password must be at least 6 characters long.");
+    if (newPassword.length < 8) {
+      setSecurityError("New password must be at least 8 characters long.");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -204,27 +202,22 @@ export default function SettingsPage() {
     }
 
     setIsSavingSecurity(true);
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSavingSecurity(false);
-
-    setSecuritySuccess("Password updated successfully!");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setShowChangePassword(false);
-  };
-
-  const handleToggle2FA = () => {
-    const nextVal = !twoFactorEnabled;
-    setTwoFactorEnabled(nextVal);
-    localStorage.setItem("settings_twoFactor", String(nextVal));
-    setSecuritySuccess(
-      nextVal
-        ? "Two-Factor Authentication enabled successfully!"
-        : "Two-Factor Authentication disabled."
-    );
-    setTimeout(() => setSecuritySuccess(null), 3000);
+    try {
+      const response = await authApi.changePassword(currentPassword, newPassword);
+      if (response.success) {
+        setSecuritySuccess("Password updated successfully!");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setShowChangePassword(false);
+      } else {
+        setSecurityError(response.error?.message || "Failed to update password.");
+      }
+    } catch (err) {
+      setSecurityError("An error occurred while updating the password.");
+    } finally {
+      setIsSavingSecurity(false);
+    }
   };
 
   // --- Card Operations ---
@@ -575,25 +568,6 @@ export default function SettingsPage() {
                   </form>
                 )}
 
-                {/* Two-Factor Block */}
-                <div className="flex items-center justify-between p-4 border border-slate-100 rounded-xl">
-                  <div>
-                    <p className="font-bold text-slate-900 text-sm">Two-Factor Authentication</p>
-                    <p className="text-xs text-slate-400 mt-1 font-medium">
-                      Add an extra layer of security
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleToggle2FA}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition ${
-                      twoFactorEnabled
-                        ? "bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100/50"
-                        : "bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100/50"
-                    }`}
-                  >
-                    {twoFactorEnabled ? "Disable" : "Enable"}
-                  </button>
-                </div>
               </div>
             </div>
           )}

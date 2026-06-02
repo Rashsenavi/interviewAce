@@ -190,6 +190,13 @@ export const authApi = {
   getCurrentUser: async () => {
     return apiClient.get<{ user: any }>("/auth/me");
   },
+
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    return apiClient.post<{ message: string }>("/auth/change-password", {
+      currentPassword,
+      newPassword,
+    });
+  },
 };
 
 // Job Seeker API
