@@ -500,15 +500,20 @@ export default function MySessionsPage() {
                         {isUpcoming && session.sessionStatus !== "awaiting_confirmation" && session.sessionStatus !== "disputed" && (
                           <>
                             {session.meetingLink && (
-                              <a
-                                href={session.meetingLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = session.meetingLink!;
+                                  const newTab = window.open(url, "_blank");
+                                  if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+                                    window.location.href = url;
+                                  }
+                                }}
                                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
                               >
                                 <Video className="w-4 h-4" />
                                 Join Meeting
-                              </a>
+                              </button>
                             )}
                             
                             {(session.rescheduleCount || 0) < 3 && !isWithin24Hours(session.scheduledDate) && session.sessionStatus !== "pending" && (

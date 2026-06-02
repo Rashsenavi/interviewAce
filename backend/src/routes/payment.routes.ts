@@ -57,10 +57,19 @@ router.post(
 router.get(
   "/status/:orderId",
   asyncHandler(async (req: Request, res: Response) => {
-    const payment = await paymentService.getPaymentByOrderId(req.params.orderId);
+    let payment = await paymentService.getPaymentByOrderId(req.params.orderId);
     if (!payment) {
       return res.status(404).json({ success: false, error: { code: "NOT_FOUND" } });
     }
+    
+    // In development mode, auto-complete pending session payments if webhook fails to fire (local checkout test)
+    if (payment.paymentStatus === "pending" && (process.env.NODE_ENV === "development" || process.env.APP_ENV === "development")) {
+      const completedPayment = await paymentService.verifySessionPaymentDev(req.params.orderId);
+      if (completedPayment) {
+        payment = completedPayment;
+      }
+    }
+
     res.json({ success: true, data: { payment } });
   })
 );

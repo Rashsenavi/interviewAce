@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "@/lib/context/AuthContext";
+import { ToastProvider } from "@/lib/context/ToastContext";
 import Script from "next/script";
 
 export const metadata = {
@@ -15,7 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </AuthProvider>
         <Script 
           src="https://www.payhere.lk/lib/payhere.js"
           strategy="beforeInteractive" 
@@ -24,3 +29,4 @@ export default function RootLayout({
     </html>
   );
 }
+

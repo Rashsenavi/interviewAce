@@ -301,9 +301,10 @@ export const updateSessionStatus = async (
 
   // Generate meeting link if status is changing to scheduled (accepted) and it doesn't have one yet
   if (status === "scheduled" && (!session.meetingLink || session.meetingLink === "PENDING_GENERATION" || session.meetingLink === "")) {
-    if (meetingLink && meetingLink.trim() !== "") {
+    if (meetingLink && meetingLink.trim() !== "" && meetingLink.trim() !== "https://zoom.us/auto" && meetingLink.trim() !== "https://teams.microsoft.com/auto") {
       updateData.meetingLink = meetingLink.trim();
     } else {
+      const platformOverride = meetingLink === "https://zoom.us/auto" ? "zoom" : (meetingLink === "https://teams.microsoft.com/auto" ? "teams" : undefined);
       // Get interviewer's platform preference
       const [interviewer] = await db
         .select({ preferredMeetingPlatform: interviewers.preferredMeetingPlatform })
@@ -314,7 +315,7 @@ export const updateSessionStatus = async (
       let generatedLink = "";
       try {
         const result = await meetingService.generateMeeting(
-          (interviewer?.preferredMeetingPlatform as "zoom" | "teams") || "zoom",
+          platformOverride || (interviewer?.preferredMeetingPlatform as "zoom" | "teams") || "zoom",
           {
             topic: `Interview Session - ${session.sessionType}`,
             startTime: session.scheduledDate,
@@ -394,10 +395,29 @@ export const updateMeetingLink = async (
     throw error;
   }
 
+  let finalLink = meetingLink;
+  if (meetingLink === "https://zoom.us/auto" || meetingLink === "https://teams.microsoft.com/auto") {
+    const platform = meetingLink === "https://zoom.us/auto" ? "zoom" : "teams";
+    try {
+      const result = await meetingService.generateMeeting(
+        platform,
+        {
+          topic: `Interview Session - ${session.sessionType || "interview"}`,
+          startTime: session.scheduledDate,
+          durationMinutes: session.duration,
+        }
+      );
+      finalLink = result.joinUrl;
+    } catch (error) {
+      console.error(`Failed to auto-generate meeting link for platform ${platform}`, error);
+      finalLink = "PENDING_GENERATION";
+    }
+  }
+
   const [updated] = await db
     .update(interviewSessions)
     .set({
-      meetingLink,
+      meetingLink: finalLink,
       updatedAt: new Date(),
     })
     .where(eq(interviewSessions.id, sessionId))

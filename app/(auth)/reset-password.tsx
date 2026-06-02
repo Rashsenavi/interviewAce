@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { authService } from "@/lib/api/auth";
+import { useToast } from "@/lib/context/ToastContext";
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
@@ -14,29 +15,26 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const toast = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setMessage("");
 
     if (!token) {
-      setError("Reset token is required.");
+      toast.error("Reset token is required.");
       setLoading(false);
       return;
     }
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      toast.error("Password must be at least 8 characters.");
       setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
       setLoading(false);
       return;
     }
@@ -44,13 +42,13 @@ export default function ResetPasswordPage() {
     try {
       const response = await authService.resetPassword(token, password);
       if (response.success) {
-        setMessage(response.message || "Password reset successfully.");
+        toast.success(response.message || "Password reset successfully.");
         setTimeout(() => router.push("/login"), 1200);
       } else {
-        setError(response.message || "Unable to reset password.");
+        toast.error(response.message || "Unable to reset password.");
       }
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -65,18 +63,6 @@ export default function ResetPasswordPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              {message}
-            </div>
-          )}
-
           <div>
             <label htmlFor="token" className="mb-2 block text-sm font-semibold text-slate-700">
               Reset Token
@@ -140,3 +126,4 @@ export default function ResetPasswordPage() {
     </div>
   );
 }
+

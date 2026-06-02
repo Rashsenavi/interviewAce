@@ -943,6 +943,88 @@ export const bookSessionWithCredit = async (sessionId: number, userId: number) =
   });
 };
 
+/**
+ * Auto-complete session payment in development mode if the webhook doesn't fire.
+ */
+export const verifySessionPaymentDev = async (orderId: string) => {
+  const [payment] = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.payhereOrderId, orderId))
+    .limit(1);
+
+  if (!payment) return null;
+  if (payment.paymentStatus === "completed") return payment;
+
+  const now = new Date();
+  const payoutMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  await db
+    .update(payments)
+    .set({
+      payhereTransactionId: `MOCK_TX_${Date.now()}`,
+      paymentMethod: "Mock Card (Dev Fallback)",
+      paymentStatus: "completed",
+      payhereRawStatus: 2,
+      paymentDate: now,
+      updatedAt: now,
+    })
+    .where(eq(payments.id, payment.id));
+
+  await db
+    .update(interviewSessions)
+    .set({ updatedAt: now })
+    .where(eq(interviewSessions.id, payment.sessionId));
+
+  const [session] = await db
+    .select({ duration: interviewSessions.duration })
+    .from(interviewSessions)
+    .where(eq(interviewSessions.id, payment.sessionId))
+    .limit(1);
+
+  const durationHours = session ? (session.duration / 60).toFixed(2) : "1.00";
+
+  const existingEarning = await db
+    .select({ id: interviewerEarnings.id })
+    .from(interviewerEarnings)
+    .where(eq(interviewerEarnings.sessionId, payment.sessionId))
+    .limit(1);
+
+  if (existingEarning.length === 0) {
+    await db.insert(interviewerEarnings).values({
+      interviewerId: payment.interviewerId,
+      sessionId: payment.sessionId,
+      paymentId: payment.id,
+      grossAmount: payment.amount,
+      commissionDeducted: payment.platformCommission,
+      netEarning: payment.interviewerPayout,
+      sessionDurationHours: durationHours,
+      payoutMonth,
+    });
+  }
+
+  await notifySessionStateChange(payment.sessionId, "payment_success");
+
+  console.log(`[Dev Fallback] Payment auto-completed for order ID: ${orderId}`);
+  
+  // Return the updated payment record
+  const [updatedPayment] = await db
+    .select({
+      id: payments.id,
+      sessionId: payments.sessionId,
+      amount: payments.amount,
+      currency: payments.currency,
+      paymentStatus: payments.paymentStatus,
+      payhereTransactionId: payments.payhereTransactionId,
+      paymentDate: payments.paymentDate,
+    })
+    .from(payments)
+    .where(eq(payments.id, payment.id))
+    .limit(1);
+
+  return updatedPayment;
+};
+
 export default {
   initiatePayment,
   processWebhook,
@@ -957,4 +1039,5 @@ export default {
   getPackageBalance,
   bookSessionWithCredit,
   verifyPackagePurchase,
+  verifySessionPaymentDev,
 };

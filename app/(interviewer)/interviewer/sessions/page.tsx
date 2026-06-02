@@ -760,15 +760,20 @@ export default function InterviewerSessionsPage() {
                         <>
                           {session.meetingLink ? (
                             <>
-                              <a
-                                href={session.meetingLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = session.meetingLink!;
+                                  const newTab = window.open(url, "_blank");
+                                  if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+                                    window.location.href = url;
+                                  }
+                                }}
                                 className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
                               >
                                 <Video className="w-4 h-4" />
                                 Start Session
-                              </a>
+                              </button>
                               <button
                                 onClick={() => {
                                   setSelectedSession(session);
@@ -1013,21 +1018,25 @@ export default function InterviewerSessionsPage() {
                     <div className="space-y-3 bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-gray-700">1. Create meeting externally</span>
-                        <a
-                          href={
-                            selectedPlatform === "meet"
-                              ? "https://meet.google.com/new"
-                              : selectedPlatform === "zoom"
-                              ? "https://zoom.us/meeting/schedule"
-                              : "https://teams.live.com/"
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url =
+                              selectedPlatform === "meet"
+                                ? "https://meet.google.com/new"
+                                : selectedPlatform === "zoom"
+                                ? "https://zoom.us/meeting/schedule"
+                                : "https://teams.live.com/";
+                            const newTab = window.open(url, "_blank");
+                            if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+                              window.location.href = url;
+                            }
+                          }}
                           className="inline-flex items-center gap-1 bg-white hover:bg-slate-50 border border-gray-300 px-2 py-1.5 rounded-lg font-semibold text-gray-700 transition-colors shadow-xs"
                         >
                           <ExternalLink size={12} />
                           Open {selectedPlatform === "meet" ? "Google Meet" : selectedPlatform === "zoom" ? "Zoom" : "Teams"}
-                        </a>
+                        </button>
                       </div>
 
                       <div className="space-y-1.5">
@@ -1400,6 +1409,7 @@ export default function InterviewerSessionsPage() {
                         href={selectedSession.meetingLink}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                         className="text-xs text-blue-600 font-medium hover:underline truncate flex-1"
                       >
                         {selectedSession.meetingLink}

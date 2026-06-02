@@ -3,34 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import { authService } from "@/lib/api/auth";
+import { useToast } from "@/lib/context/ToastContext";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
- 
+  const toast = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
-    setMessage("");
-    
 
     try {
       const response = await authService.forgotPassword(email);
       if (response.success) {
-        setMessage(
+        toast.success(
           response.message ||
             "If your email exists, a password reset link has been sent."
         );
-       
       } else {
-        setError(response.message || "Unable to process request.");
+        toast.error(response.message || "Unable to process request.");
       }
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -45,18 +40,6 @@ export default function ForgotPasswordPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-              {message}
-            </div>
-          )}
-
           <div>
             <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">
               Email Address
@@ -87,10 +70,8 @@ export default function ForgotPasswordPage() {
             Back to login
           </Link>
         </div>
-
-        
-            
       </div>
     </div>
   );
 }
+

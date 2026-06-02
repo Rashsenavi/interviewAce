@@ -3,22 +3,19 @@
 import React, { useState, useEffect } from "react";
 import {
   User,
-  Bell,
   Lock,
   CreditCard,
   Globe,
-  CheckCircle2,
-  AlertCircle,
   Loader2,
   Trash2,
   Plus,
 } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
+import { useToast } from "@/lib/context/ToastContext";
 import { jobSeekerApi, authApi } from "@/lib/api";
 
 const settingsSections = [
   { id: "profile", name: "Profile Settings", icon: User },
-  { id: "notifications", name: "Notifications", icon: Bell },
   { id: "security", name: "Security", icon: Lock },
   { id: "payments", name: "Payment Methods", icon: CreditCard },
   { id: "preferences", name: "Preferences", icon: Globe },
@@ -35,6 +32,7 @@ interface CreditCardInfo {
 
 export default function SettingsPage() {
   const { user, updateUser } = useAuth();
+  const toast = useToast();
   const [activeSection, setActiveSection] = useState("profile");
 
   // --- Profile State ---
@@ -44,15 +42,6 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
-  const [profileError, setProfileError] = useState<string | null>(null);
-
-  // --- Notifications State ---
-  const [emailSessions, setEmailSessions] = useState(true);
-  const [smsReminders, setSmsReminders] = useState(true);
-  const [feedbackNotifications, setFeedbackNotifications] = useState(true);
-  const [marketingEmails, setMarketingEmails] = useState(false);
-  const [notificationSuccess, setNotificationSuccess] = useState<string | null>(null);
 
   // --- Security State ---
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -60,8 +49,6 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSavingSecurity, setIsSavingSecurity] = useState(false);
-  const [securitySuccess, setSecuritySuccess] = useState<string | null>(null);
-  const [securityError, setSecurityError] = useState<string | null>(null);
 
   // --- Payments State ---
   const [cards, setCards] = useState<CreditCardInfo[]>([]);
@@ -71,12 +58,10 @@ export default function SettingsPage() {
   const [newCardCvv, setNewCardCvv] = useState("");
   const [newCardName, setNewCardName] = useState("");
   const [newCardBrand, setNewCardBrand] = useState("VISA");
-  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
 
   // --- Preferences State ---
   const [language, setLanguage] = useState("English");
   const [timezone, setTimezone] = useState("Asia/Colombo (GMT+5:30)");
-  const [preferencesSuccess, setPreferencesSuccess] = useState<string | null>(null);
 
   // --- Load Profile Data ---
   useEffect(() => {
@@ -97,25 +82,17 @@ export default function SettingsPage() {
         }
       } catch (err) {
         console.error("Error loading profile:", err);
-        setProfileError("Could not load profile data.");
+        toast.error("Could not load profile data.");
       } finally {
         setIsLoadingProfile(false);
       }
     }
     loadProfile();
-  }, []);
+  }, [toast]);
 
   // --- Load LocalStorage Settings ---
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // Notifications
-      setEmailSessions(localStorage.getItem("settings_emailSessions") !== "false");
-      setSmsReminders(localStorage.getItem("settings_smsReminders") !== "false");
-      setFeedbackNotifications(localStorage.getItem("settings_feedbackNotifications") !== "false");
-      setMarketingEmails(localStorage.getItem("settings_marketingEmails") === "true");
-
-      // Security (Mocks) - None
-
       // Preferences
       setTimezone(localStorage.getItem("settings_timezone") || "Asia/Colombo (GMT+5:30)");
 
@@ -142,8 +119,6 @@ export default function SettingsPage() {
 
   // --- Save Profile ---
   const handleSaveProfile = async () => {
-    setProfileSuccess(null);
-    setProfileError(null);
     setIsSavingProfile(true);
 
     try {
@@ -164,40 +139,31 @@ export default function SettingsPage() {
             phoneNumber,
           });
         }
-        setProfileSuccess("Profile updated successfully!");
+        toast.success("Profile updated successfully!");
       } else {
-        setProfileError(response.error?.message || "Failed to update profile.");
+        toast.error(response.error?.message || "Failed to update profile.");
       }
     } catch (err) {
-      setProfileError("An unexpected error occurred. Please try again.");
+      toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsSavingProfile(false);
     }
   };
 
-  // --- Save Notification Changes ---
-  const handleToggleNotification = (key: string, value: boolean) => {
-    localStorage.setItem(`settings_${key}`, String(value));
-    setNotificationSuccess("Notification preferences saved!");
-    setTimeout(() => setNotificationSuccess(null), 3000);
-  };
-
   // --- Save Security Real ---
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSecuritySuccess(null);
-    setSecurityError(null);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setSecurityError("All password fields are required.");
+      toast.error("All password fields are required.");
       return;
     }
     if (newPassword.length < 8) {
-      setSecurityError("New password must be at least 8 characters long.");
+      toast.error("New password must be at least 8 characters long.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setSecurityError("New passwords do not match.");
+      toast.error("New passwords do not match.");
       return;
     }
 
@@ -205,16 +171,16 @@ export default function SettingsPage() {
     try {
       const response = await authApi.changePassword(currentPassword, newPassword);
       if (response.success) {
-        setSecuritySuccess("Password updated successfully!");
+        toast.success("Password updated successfully!");
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setShowChangePassword(false);
       } else {
-        setSecurityError(response.error?.message || "Failed to update password.");
+        toast.error(response.error?.message || "Failed to update password.");
       }
     } catch (err) {
-      setSecurityError("An error occurred while updating the password.");
+      toast.error("An error occurred while updating the password.");
     } finally {
       setIsSavingSecurity(false);
     }
@@ -247,8 +213,7 @@ export default function SettingsPage() {
     setNewCardCvv("");
     setNewCardName("");
     setShowAddCard(false);
-    setPaymentSuccess("Payment method added successfully!");
-    setTimeout(() => setPaymentSuccess(null), 3000);
+    toast.success("Payment method added successfully!");
   };
 
   const handleSetDefaultCard = (id: string) => {
@@ -258,8 +223,7 @@ export default function SettingsPage() {
     }));
     setCards(updatedCards);
     localStorage.setItem("settings_cards", JSON.stringify(updatedCards));
-    setPaymentSuccess("Default payment method updated.");
-    setTimeout(() => setPaymentSuccess(null), 3000);
+    toast.success("Default payment method updated.");
   };
 
   const handleDeleteCard = (id: string) => {
@@ -270,15 +234,13 @@ export default function SettingsPage() {
     }
     setCards(updatedCards);
     localStorage.setItem("settings_cards", JSON.stringify(updatedCards));
-    setPaymentSuccess("Payment method removed.");
-    setTimeout(() => setPaymentSuccess(null), 3000);
+    toast.success("Payment method removed.");
   };
 
   // --- Preferences Toggles ---
   const handleLanguageChange = async (val: string) => {
     setLanguage(val);
-    setPreferencesSuccess("Preference language updated.");
-    setTimeout(() => setPreferencesSuccess(null), 3000);
+    toast.success("Preference language updated.");
 
     // Sync with database profile
     try {
@@ -293,8 +255,7 @@ export default function SettingsPage() {
   const handleTimezoneChange = (val: string) => {
     setTimezone(val);
     localStorage.setItem("settings_timezone", val);
-    setPreferencesSuccess("Preference timezone updated.");
-    setTimeout(() => setPreferencesSuccess(null), 3000);
+    toast.success("Preference timezone updated.");
   };
 
   return (
@@ -334,19 +295,6 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {profileSuccess && (
-                    <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-emerald-800 text-sm font-medium">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                      {profileSuccess}
-                    </div>
-                  )}
-                  {profileError && (
-                    <div className="flex items-center gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 p-4 text-rose-800 text-sm font-medium">
-                      <AlertCircle className="h-4 w-4 text-rose-600 flex-shrink-0" />
-                      {profileError}
-                    </div>
-                  )}
-
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
@@ -418,88 +366,18 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* NOTIFICATIONS SECTION */}
-          {activeSection === "notifications" && (
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 mb-5">Notification Preferences</h2>
-              {notificationSuccess && (
-                <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-emerald-800 text-sm font-medium mb-5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                  {notificationSuccess}
-                </div>
-              )}
-              <div className="space-y-4">
-                {[
-                  {
-                    key: "emailSessions",
-                    label: "Email notifications for new sessions",
-                    state: emailSessions,
-                    setter: setEmailSessions,
-                  },
-                  {
-                    key: "smsReminders",
-                    label: "SMS reminders before interviews",
-                    state: smsReminders,
-                    setter: setSmsReminders,
-                  },
-                  {
-                    key: "feedbackNotifications",
-                    label: "Feedback notifications",
-                    state: feedbackNotifications,
-                    setter: setFeedbackNotifications,
-                  },
-                  {
-                    key: "marketingEmails",
-                    label: "Marketing emails",
-                    state: marketingEmails,
-                    setter: setMarketingEmails,
-                  },
-                ].map((item) => (
-                  <label
-                    key={item.key}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer select-none"
-                  >
-                    <span className="text-sm font-semibold text-slate-700">{item.label}</span>
-                    <input
-                      type="checkbox"
-                      checked={item.state}
-                      onChange={(e) => {
-                        const val = e.target.checked;
-                        item.setter(val);
-                        handleToggleNotification(item.key, val);
-                      }}
-                      className="w-5 h-5 text-indigo-600 rounded-lg border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
-                    />
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* NOTIFICATIONS SECTION REMOVED */}
 
           {/* SECURITY SECTION */}
           {activeSection === "security" && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 mb-5">Security Settings</h2>
-              {securitySuccess && (
-                <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-emerald-800 text-sm font-medium mb-5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                  {securitySuccess}
-                </div>
-              )}
-              {securityError && (
-                <div className="flex items-center gap-2.5 rounded-xl border border-rose-100 bg-rose-50/50 p-4 text-rose-800 text-sm font-medium mb-5">
-                  <AlertCircle className="h-4 w-4 text-rose-600 flex-shrink-0" />
-                  {securityError}
-                </div>
-              )}
 
               <div className="space-y-4">
                 {/* Change Password Block */}
                 {!showChangePassword ? (
                   <button
                     onClick={() => {
-                      setSecuritySuccess(null);
-                      setSecurityError(null);
                       setShowChangePassword(true);
                     }}
                     className="w-full text-left p-4 border border-slate-100 rounded-xl hover:bg-slate-50/50 transition-all duration-200"
@@ -587,12 +465,7 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              {paymentSuccess && (
-                <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-emerald-800 text-sm font-medium mb-5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                  {paymentSuccess}
-                </div>
-              )}
+              {/* Payment success alerts handled by Toast */}
 
               {/* Add Card Form */}
               {showAddCard && (
@@ -747,12 +620,6 @@ export default function SettingsPage() {
           {activeSection === "preferences" && (
             <div>
               <h2 className="text-lg font-bold text-slate-900 mb-5">Preferences</h2>
-              {preferencesSuccess && (
-                <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-emerald-800 text-sm font-medium mb-5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                  {preferencesSuccess}
-                </div>
-              )}
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
