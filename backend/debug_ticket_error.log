@@ -1,8 +1,0 @@
-{
-  "stack": "Error: Connection terminated due to connection timeout\n    at /Users/rashmisenavirathna/Documents/interviewace/backend/node_modules/pg-pool/index.js:45:11\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async <anonymous> (/Users/rashmisenavirathna/Documents/interviewace/backend/node_modules/src/node-postgres/session.ts:65:19)\n    at async Object.createUserTicket (/Users/rashmisenavirathna/Documents/interviewace/backend/src/services/support.service.ts:119:18)\n    at async createTicketHandler (/Users/rashmisenavirathna/Documents/interviewace/backend/src/controllers/user-support.controller.ts:24:23)",
-  "message": "Connection terminated due to connection timeout",
-  "cause": {
-    "stack": "Error: Connection terminated unexpectedly\n    at Connection.<anonymous> (/Users/rashmisenavirathna/Documents/interviewace/backend/node_modules/pg/lib/client.js:193:73)\n    at Object.onceWrapper (node:events:632:28)\n    at Connection.emit (node:events:518:28)\n    at Socket.<anonymous> (/Users/rashmisenavirathna/Documents/interviewace/backend/node_modules/pg/lib/connection.js:61:12)\n    at Socket.emit (node:events:518:28)\n    at TCP.<anonymous> (node:net:346:12)",
-    "message": "Connection terminated unexpectedly"
-  }
-}

@@ -8,7 +8,10 @@ export interface JWTPayload {
   exp?: number;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key_here_min_32_characters";
+const JWT_SECRET = process.env.JWT_SECRET!;
+if (!JWT_SECRET) {
+  throw new Error("FATAL: JWT_SECRET environment variable is not set");
+}
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 
 /**
