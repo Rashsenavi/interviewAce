@@ -40,6 +40,14 @@ html?: string;
 export const sendMail = async (input: SendMailInput) => {
 if (!isMailEnabled()) {
 console.warn("[Mail] Mail is not enabled. Skipping send.");
+if (APP_ENV === "development") {
+console.log("\n==================================================");
+console.log("📨 [DEV MAIL SIMULATOR] Email Content:");
+console.log(`To:      ${input.to}`);
+console.log(`Subject: ${input.subject}`);
+console.log(`Message:\n${input.text}`);
+console.log("==================================================\n");
+}
 return { skipped: true };
 }
 
