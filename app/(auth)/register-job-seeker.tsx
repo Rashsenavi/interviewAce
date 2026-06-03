@@ -8,14 +8,14 @@ import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/context/AuthContext";
 
 const INDUSTRIES = [
-  "IT & Software",
-  "Banking & Finance",
-  "Telecommunications",
-  "Manufacturing",
-  "Government Services",
-  "Healthcare",
-  "Education",
-  "Consulting",
+  "Software Engineering",
+  "QA & Testing",
+  "UI/UX Design",
+  "DevOps & Cloud Infrastructure",
+  "Product & Project Management",
+  "Data Science & Analytics",
+  "Cybersecurity",
+  "Business Analysis & IT Consulting",
 ];
 
 export default function JobSeekerRegisterPage() {
@@ -92,7 +92,7 @@ export default function JobSeekerRegisterPage() {
 
     if (currentStep === 3) {
       if (formData.targetIndustries.length === 0) {
-        setError("Please select at least one target industry");
+        setError("Please select at least one target IT job role");
         return false;
       }
       if (!formData.careerGoals) {
@@ -402,7 +402,7 @@ export default function JobSeekerRegisterPage() {
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-4">
-                    Target Industries * (Select all that apply)
+                    Target IT Job Roles * (Select all that apply)
                   </label>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {INDUSTRIES.map((industry) => (
