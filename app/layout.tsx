@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./landing.css";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { ToastProvider } from "@/lib/context/ToastContext";
 import Script from "next/script";
