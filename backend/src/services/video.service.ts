@@ -2,6 +2,37 @@ import { db } from "../config/database";
 import { sampleVideos, users, industries, interviewSessions, jobSeekers } from "../db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import cloudinary, { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } from "../config/cloudinary";
+import { supabase } from "../config/supabase";
+
+const getRelativePathFromUrl = (url: string, bucketName: string = "videos"): string | null => {
+  if (!url) return null;
+  const marker = `/public/${bucketName}/`;
+  const index = url.indexOf(marker);
+  if (index !== -1) {
+    return decodeURIComponent(url.substring(index + marker.length));
+  }
+  return null;
+};
+
+const signUrlIfNeeded = async (url: string | null | undefined, bucketName: string = "videos"): Promise<string | null | undefined> => {
+  if (!url) return url;
+  if (!supabase) return url;
+  const relativePath = getRelativePathFromUrl(url, bucketName);
+  if (relativePath) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(relativePath, 3600); // 1 hour expiry
+      if (data?.signedUrl) {
+        return data.signedUrl;
+      }
+    } catch (err) {
+      console.error("Error signing URL:", err);
+    }
+  }
+  return url;
+};
+
 
 
 /**
@@ -49,7 +80,15 @@ export const getPendingVideos = async () => {
     .where(eq(sampleVideos.adminApprovalStatus, "pending"))
     .orderBy(desc(sampleVideos.createdAt));
 
-  return result;
+  return Promise.all(
+    result.map(async (video) => {
+      const signedVideoUrl = await signUrlIfNeeded(video.videoUrl, "videos");
+      return {
+        ...video,
+        videoUrl: signedVideoUrl || video.videoUrl,
+      };
+    })
+  );
 };
 
 /**
@@ -105,7 +144,15 @@ export const getApprovedVideos = async (filters?: { industryId?: number }) => {
     .where(and(...conditions))
     .orderBy(desc(sampleVideos.createdAt));
 
-  return result;
+  return Promise.all(
+    result.map(async (video) => {
+      const signedVideoUrl = await signUrlIfNeeded(video.videoUrl, "videos");
+      return {
+        ...video,
+        videoUrl: signedVideoUrl || video.videoUrl,
+      };
+    })
+  );
 };
 
 export const incrementViewCount = async (videoId: number) => {

@@ -1,14 +1,16 @@
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.warn("⚠️  Supabase configuration incomplete. File uploads will not work.");
 }
 
-// Create Supabase client with service key for server-side operations
-export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+// Create Supabase client safely with service key for server-side operations if credentials exist
+export const supabase = (SUPABASE_URL && SUPABASE_SERVICE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  : null as any;
 
 /**
  * Upload file to Supabase Storage
@@ -20,6 +22,9 @@ export const uploadFileToSupabase = async (
   contentType: string
 ): Promise<{ url: string; error?: string }> => {
   try {
+    if (!supabase) {
+      throw new Error("Supabase client is not configured/initialized");
+    }
     const { data, error } = await supabase.storage
       .from(bucketName)
       .upload(filePath, fileBuffer, {
@@ -53,6 +58,9 @@ export const deleteFileFromSupabase = async (
   filePath: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
+    if (!supabase) {
+      throw new Error("Supabase client is not configured/initialized");
+    }
     const { error } = await supabase.storage
       .from(bucketName)
       .remove([filePath]);

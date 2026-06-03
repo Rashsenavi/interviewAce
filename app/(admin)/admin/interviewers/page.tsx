@@ -12,6 +12,7 @@ interface Interviewer {
   verificationStatus: string;
   nicUrl?: string;
   appointmentLetterUrl?: string;
+  linkedinProfile?: string;
 }
 
 interface ApiErrorResponse {
@@ -198,6 +199,18 @@ export default function InterviewersPage() {
                           ) : (
                             <span className="text-slate-400">Appointment letter missing</span>
                           )}
+                          {i.linkedinProfile ? (
+                            <a
+                              href={i.linkedinProfile}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium text-blue-600 hover:text-blue-700"
+                            >
+                              View LinkedIn Profile
+                            </a>
+                          ) : (
+                            <span className="text-slate-400">LinkedIn Profile missing</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-4">
@@ -253,6 +266,20 @@ export default function InterviewersPage() {
                     ) : (
                       <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-slate-500">
                         Appointment missing
+                      </span>
+                    )}
+                    {i.linkedinProfile ? (
+                      <a
+                        href={i.linkedinProfile}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 font-medium text-blue-700"
+                      >
+                        LinkedIn
+                      </a>
+                    ) : (
+                      <span className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-slate-500">
+                        LinkedIn missing
                       </span>
                     )}
                   </div>

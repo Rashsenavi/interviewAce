@@ -2,6 +2,7 @@ import { interviewers, users, interviewSessions, payments, jobSeekers, sampleVid
 import { eq, sql, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "../config/database";
+import { supabase } from "../config/supabase";
 
 type AdminServiceError = Error & { status?: number; code?: string };
 
@@ -25,6 +26,35 @@ const parseInterviewerId = (interviewerId: string): number => {
 const buildFullName = (firstName: string, lastName: string) =>
   `${firstName} ${lastName}`.trim();
 
+const getRelativePathFromUrl = (url: string, bucketName: string = "documents"): string | null => {
+  if (!url) return null;
+  const marker = `/public/${bucketName}/`;
+  const index = url.indexOf(marker);
+  if (index !== -1) {
+    return decodeURIComponent(url.substring(index + marker.length));
+  }
+  return null;
+};
+
+const signUrlIfNeeded = async (url: string | null | undefined, bucketName: string = "documents"): Promise<string | null | undefined> => {
+  if (!url) return url;
+  if (!supabase) return url;
+  const relativePath = getRelativePathFromUrl(url, bucketName);
+  if (relativePath) {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .createSignedUrl(relativePath, 3600); // 1 hour expiry
+      if (data?.signedUrl) {
+        return data.signedUrl;
+      }
+    } catch (err) {
+      console.error("Error signing URL:", err);
+    }
+  }
+  return url;
+};
+
 const getInterviewerWithUserById = async (interviewerId: number) => {
   const [interviewer] = await db
     .select({
@@ -37,6 +67,7 @@ const getInterviewerWithUserById = async (interviewerId: number) => {
       isVerified: interviewers.isVerified,
       nicUrl: interviewers.nicUrl,
       appointmentLetterUrl: interviewers.appointmentLetterUrl,
+      linkedinProfile: interviewers.linkedinProfile,
       verifiedAt: interviewers.verifiedAt,
       createdAt: interviewers.createdAt,
       updatedAt: interviewers.updatedAt,
@@ -46,12 +77,17 @@ const getInterviewerWithUserById = async (interviewerId: number) => {
     .where(eq(interviewers.id, interviewerId))
     .limit(1);
 
-  return interviewer
-    ? {
-        ...interviewer,
-        fullName: buildFullName(interviewer.firstName, interviewer.lastName),
-      }
-    : null;
+  if (!interviewer) return null;
+
+  const signedNicUrl = await signUrlIfNeeded(interviewer.nicUrl);
+  const signedAppointmentLetterUrl = await signUrlIfNeeded(interviewer.appointmentLetterUrl);
+
+  return {
+    ...interviewer,
+    fullName: buildFullName(interviewer.firstName, interviewer.lastName),
+    nicUrl: signedNicUrl || interviewer.nicUrl,
+    appointmentLetterUrl: signedAppointmentLetterUrl || interviewer.appointmentLetterUrl,
+  };
 };
 
 export const getPendingInterviewers = async () => {
@@ -66,6 +102,7 @@ export const getPendingInterviewers = async () => {
       isVerified: interviewers.isVerified,
       nicUrl: interviewers.nicUrl,
       appointmentLetterUrl: interviewers.appointmentLetterUrl,
+      linkedinProfile: interviewers.linkedinProfile,
       createdAt: interviewers.createdAt,
       updatedAt: interviewers.updatedAt,
     })
@@ -73,10 +110,18 @@ export const getPendingInterviewers = async () => {
     .innerJoin(users, eq(interviewers.userId, users.id))
     .where(eq(interviewers.verificationStatus, "pending"));
 
-  return result.map((interviewer) => ({
-    ...interviewer,
-    fullName: buildFullName(interviewer.firstName, interviewer.lastName),
-  }));
+  return Promise.all(
+    result.map(async (interviewer) => {
+      const signedNicUrl = await signUrlIfNeeded(interviewer.nicUrl);
+      const signedAppointmentLetterUrl = await signUrlIfNeeded(interviewer.appointmentLetterUrl);
+      return {
+        ...interviewer,
+        fullName: buildFullName(interviewer.firstName, interviewer.lastName),
+        nicUrl: signedNicUrl || interviewer.nicUrl,
+        appointmentLetterUrl: signedAppointmentLetterUrl || interviewer.appointmentLetterUrl,
+      };
+    })
+  );
 };
 
 export const getInterviewerDetails = async (interviewerId: string) => {
@@ -272,11 +317,27 @@ export const getPlatformAnalytics = async () => {
     .orderBy(desc(interviewers.ratingAverage), desc(interviewers.totalInterviews))
     .limit(5);
 
+  const signedRecentBookings = await Promise.all(
+    recentBookings.map(async (booking) => {
+      if (booking.sampleVideo?.videoUrl) {
+        const signedUrl = await signUrlIfNeeded(booking.sampleVideo.videoUrl, "videos");
+        return {
+          ...booking,
+          sampleVideo: {
+            ...booking.sampleVideo,
+            videoUrl: signedUrl || booking.sampleVideo.videoUrl,
+          },
+        };
+      }
+      return booking;
+    })
+  );
+
   return {
     users: userCounts,
     sessions: sessionCounts,
     financials,
-    recentBookings,
+    recentBookings: signedRecentBookings,
     topInterviewers,
   };
 };

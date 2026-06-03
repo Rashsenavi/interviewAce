@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { videoApi } from "@/lib/api";
-import { CheckCircle, XCircle, Video, PlayCircle } from "lucide-react";
+import { CheckCircle, XCircle, Video, PlayCircle, X } from "lucide-react";
 
 interface PendingVideo {
   id: number;
@@ -21,6 +21,8 @@ export default function AdminVideosPage() {
   const [videos, setVideos] = useState<PendingVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const [activeVideoTitle, setActiveVideoTitle] = useState<string>("");
 
   const fetchPendingVideos = async () => {
     try {
@@ -119,15 +121,16 @@ export default function AdminVideosPage() {
                     <td className="px-6 py-4">
                       <div className="font-medium text-gray-900 mb-1">{video.videoTitle}</div>
                       <div className="text-xs text-gray-500 max-w-xs truncate">{video.videoDescription}</div>
-                      <a 
-                        href={video.videoUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 mt-2 text-xs font-medium"
+                      <button 
+                        onClick={() => {
+                          setActiveVideoUrl(video.videoUrl);
+                          setActiveVideoTitle(video.videoTitle);
+                        }}
+                        className="inline-flex items-center gap-1 text-teal-600 hover:text-teal-700 mt-2 text-xs font-medium bg-transparent border-0 cursor-pointer p-0 align-baseline"
                       >
                         <PlayCircle className="w-3 h-3" />
                         Watch Video
-                      </a>
+                      </button>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-gray-900">{video.uploaderFirstName} {video.uploaderLastName}</div>
@@ -167,6 +170,47 @@ export default function AdminVideosPage() {
           </table>
         </div>
       </div>
+
+      {activeVideoUrl && (
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+          <div className="bg-white rounded-xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="font-bold text-gray-900 truncate max-w-[80%]">
+                Reviewing: {activeVideoTitle}
+              </h3>
+              <button
+                onClick={() => {
+                  setActiveVideoUrl(null);
+                  setActiveVideoTitle("");
+                }}
+                className="p-1.5 hover:bg-gray-200 rounded-full text-gray-500 hover:text-gray-700 transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="relative aspect-video bg-black flex items-center justify-center">
+              <video
+                src={activeVideoUrl}
+                controls
+                autoPlay
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="p-4 bg-gray-50 flex justify-end">
+              <button
+                onClick={() => {
+                  setActiveVideoUrl(null);
+                  setActiveVideoTitle("");
+                }}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium text-sm transition-colors"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
