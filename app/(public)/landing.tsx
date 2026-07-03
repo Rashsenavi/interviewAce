@@ -26,13 +26,7 @@ const bodyFont = Manrope({
   variable: "--font-body",
 });
 
-// ─── Marketing stats (kept as-is per design decision) ────────────────────────
-const stats = [
-  { label: "Sessions completed", value: "2,500+" },
-  { label: "Verified interviewers", value: "180+" },
-  { label: "Average rating", value: "4.8 / 5" },
-  { label: "Interview confidence gain", value: "+45%" },
-];
+
 
 const steps = [
   {
@@ -139,13 +133,39 @@ async function fetchPublicData<T>(path: string): Promise<T | null> {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default async function InterviewAceLanding() {
   // Fetch real data server-side (with 5 min cache)
-  const [interviewersData, testimonialsData] = await Promise.all([
+  const [interviewersData, testimonialsData, statsData] = await Promise.all([
     fetchPublicData<{ interviewers: any[] }>("interviewers"),
     fetchPublicData<{ testimonials: any[] }>("testimonials"),
+    fetchPublicData<{
+      sessionsCompleted: number;
+      verifiedInterviewers: number;
+      averageRating: number;
+      confidenceGain: number;
+    }>("stats"),
   ]);
 
   const liveInterviewers = interviewersData?.interviewers ?? [];
   const realTestimonials = testimonialsData?.testimonials ?? [];
+
+  // Map real database stats dynamically (falls back to placeholder stats if data fetching fails)
+  const stats = [
+    {
+      label: "Sessions completed",
+      value: statsData ? `${statsData.sessionsCompleted.toLocaleString()}` : "2,500+",
+    },
+    {
+      label: "Verified interviewers",
+      value: statsData ? `${statsData.verifiedInterviewers.toLocaleString()}` : "180+",
+    },
+    {
+      label: "Average rating",
+      value: statsData ? `${statsData.averageRating.toFixed(1)} / 5` : "4.8 / 5",
+    },
+    {
+      label: "Interview confidence gain",
+      value: statsData ? `+${statsData.confidenceGain}%` : "+45%",
+    },
+  ];
 
   // Use real testimonials if we have 3+, otherwise fall back to hardcoded
   const displayTestimonials =

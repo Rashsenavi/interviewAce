@@ -65,8 +65,12 @@ export default function JobSeekerRegisterPage() {
         setError("First and last name are required");
         return false;
       }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!formData.email) {
         setError("Email is required");
+        return false;
+      } else if (!emailRegex.test(formData.email)) {
+        setError("Please enter a valid email address");
         return false;
       }
       if (!formData.password || !formData.confirmPassword) {
