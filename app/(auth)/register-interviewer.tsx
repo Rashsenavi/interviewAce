@@ -514,18 +514,18 @@ export default function InterviewerRegisterPage() {
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
-                    Hourly Rate (USD) *
+                    Hourly Rate (LKR) *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-3.5 text-gray-500">$</span>
+                    <span className="absolute left-4 top-3.5 text-gray-500">Rs.</span>
                     <input
                       type="number"
                       name="hourlyRate"
                       value={formData.hourlyRate}
                       onChange={handleInputChange}
-                      placeholder="50"
-                      min="10"
-                      className="w-full rounded-xl border border-slate-300 py-3 pl-8 pr-4 text-base outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
+                      placeholder="3000"
+                      min="500"
+                      className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 text-base outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
                       required
                     />
                   </div>
@@ -580,7 +580,7 @@ export default function InterviewerRegisterPage() {
                           </span>
                         ))}
                       </div>
-                      <p className="text-gray-800 font-semibold">${formData.hourlyRate}/hour</p>
+                      <p className="text-gray-800 font-semibold">LKR {formData.hourlyRate}/hour</p>
                     </div>
                   </div>
                 </div>
