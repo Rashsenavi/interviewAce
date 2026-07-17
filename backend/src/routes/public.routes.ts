@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { asyncHandler } from "../middleware/errorHandler";
-import { getPublicInterviewers, getPublicTestimonials } from "../services/public.service";
+import { getPublicInterviewers, getPublicTestimonials, getPublicStats } from "../services/public.service";
 
 const router = Router();
 
@@ -25,6 +25,18 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const testimonials = await getPublicTestimonials(3);
     res.json({ success: true, data: { testimonials } });
+  })
+);
+
+/**
+ * GET /api/public/stats
+ * Real platform stats for the landing page (no auth required)
+ */
+router.get(
+  "/stats",
+  asyncHandler(async (req: Request, res: Response) => {
+    const stats = await getPublicStats();
+    res.json({ success: true, data: stats });
   })
 );
 

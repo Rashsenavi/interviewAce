@@ -1,16 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SUPABASE_URL = process.env.SUPABASE_URL!;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.warn("⚠️  Supabase configuration incomplete. File uploads will not work.");
+if (!SUPABASE_URL) {
+  throw new Error("FATAL: SUPABASE_URL environment variable is not set");
+}
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error("FATAL: SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
 }
 
-// Create Supabase client safely with service key for server-side operations if credentials exist
-export const supabase = (SUPABASE_URL && SUPABASE_SERVICE_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-  : null as any;
+// Create Supabase client safely with service role key for server-side operations
+export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 /**
  * Upload file to Supabase Storage

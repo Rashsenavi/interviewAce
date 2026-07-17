@@ -132,3 +132,21 @@ export async function getInterviewerReviewStats(interviewerId: number) {
     recentReviews: allReviews.slice(0, 5) // Return top 5 most recent for the dashboard
   };
 }
+
+export async function resolveJobSeekerIdByUserId(userId: number): Promise<number | null> {
+  const [record] = await db
+    .select({ id: jobSeekers.id })
+    .from(jobSeekers)
+    .where(eq(jobSeekers.userId, userId))
+    .limit(1);
+  return record ? record.id : null;
+}
+
+export async function resolveInterviewerIdByUserId(userId: number): Promise<number | null> {
+  const [record] = await db
+    .select({ id: interviewers.id })
+    .from(interviewers)
+    .where(eq(interviewers.userId, userId))
+    .limit(1);
+  return record ? record.id : null;
+}

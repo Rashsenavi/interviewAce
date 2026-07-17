@@ -1,10 +1,8 @@
 {
-  "id": "529bc689-6728-4f02-83e7-2595b62bb8bc",
-  "prevId": "34c81f57-23aa-407f-841e-9f178df204e6",
-  "version": "5",
-  "dialect": "pg",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "admins": {
+    "public.admins": {
       "name": "admins",
       "schema": "",
       "columns": {
@@ -52,29 +50,32 @@
         "admins_user_id_users_id_fk": {
           "name": "admins_user_id_users_id_fk",
           "tableFrom": "admins",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "admins_user_id_unique": {
           "name": "admins_user_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "user_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "availability_slots": {
+    "public.availability_slots": {
       "name": "availability_slots",
       "schema": "",
       "columns": {
@@ -148,21 +149,24 @@
         "availability_slots_interviewer_id_interviewers_id_fk": {
           "name": "availability_slots_interviewer_id_interviewers_id_fk",
           "tableFrom": "availability_slots",
-          "tableTo": "interviewers",
           "columnsFrom": [
             "interviewer_id"
           ],
+          "tableTo": "interviewers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "favorite_interviewers": {
+    "public.favorite_interviewers": {
       "name": "favorite_interviewers",
       "schema": "",
       "columns": {
@@ -197,34 +201,37 @@
         "favorite_interviewers_job_seeker_id_job_seekers_id_fk": {
           "name": "favorite_interviewers_job_seeker_id_job_seekers_id_fk",
           "tableFrom": "favorite_interviewers",
-          "tableTo": "job_seekers",
           "columnsFrom": [
             "job_seeker_id"
           ],
+          "tableTo": "job_seekers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "favorite_interviewers_interviewer_id_interviewers_id_fk": {
           "name": "favorite_interviewers_interviewer_id_interviewers_id_fk",
           "tableFrom": "favorite_interviewers",
-          "tableTo": "interviewers",
           "columnsFrom": [
             "interviewer_id"
           ],
+          "tableTo": "interviewers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "feedback": {
+    "public.feedback": {
       "name": "feedback",
       "schema": "",
       "columns": {
@@ -345,47 +352,50 @@
         "feedback_session_id_interview_sessions_id_fk": {
           "name": "feedback_session_id_interview_sessions_id_fk",
           "tableFrom": "feedback",
-          "tableTo": "interview_sessions",
           "columnsFrom": [
             "session_id"
           ],
+          "tableTo": "interview_sessions",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "feedback_given_by_user_id_users_id_fk": {
           "name": "feedback_given_by_user_id_users_id_fk",
           "tableFrom": "feedback",
-          "tableTo": "users",
           "columnsFrom": [
             "given_by_user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "feedback_feedback_for_user_id_users_id_fk": {
           "name": "feedback_feedback_for_user_id_users_id_fk",
           "tableFrom": "feedback",
-          "tableTo": "users",
           "columnsFrom": [
             "feedback_for_user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "industries": {
+    "public.industries": {
       "name": "industries",
       "schema": "",
       "columns": {
@@ -440,14 +450,17 @@
       "uniqueConstraints": {
         "industries_industry_name_unique": {
           "name": "industries_industry_name_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "industry_name"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "interview_sessions": {
+    "public.interview_sessions": {
       "name": "interview_sessions",
       "schema": "",
       "columns": {
@@ -582,60 +595,63 @@
         "interview_sessions_job_seeker_id_job_seekers_id_fk": {
           "name": "interview_sessions_job_seeker_id_job_seekers_id_fk",
           "tableFrom": "interview_sessions",
-          "tableTo": "job_seekers",
           "columnsFrom": [
             "job_seeker_id"
           ],
+          "tableTo": "job_seekers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "interview_sessions_interviewer_id_interviewers_id_fk": {
           "name": "interview_sessions_interviewer_id_interviewers_id_fk",
           "tableFrom": "interview_sessions",
-          "tableTo": "interviewers",
           "columnsFrom": [
             "interviewer_id"
           ],
+          "tableTo": "interviewers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "interview_sessions_industry_id_industries_id_fk": {
           "name": "interview_sessions_industry_id_industries_id_fk",
           "tableFrom": "interview_sessions",
-          "tableTo": "industries",
           "columnsFrom": [
             "industry_id"
           ],
+          "tableTo": "industries",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "interview_sessions_cancelled_by_users_id_fk": {
           "name": "interview_sessions_cancelled_by_users_id_fk",
           "tableFrom": "interview_sessions",
-          "tableTo": "users",
           "columnsFrom": [
             "cancelled_by"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "interviewer_earnings": {
+    "public.interviewer_earnings": {
       "name": "interviewer_earnings",
       "schema": "",
       "columns": {
@@ -719,55 +735,58 @@
         "interviewer_earnings_interviewer_id_interviewers_id_fk": {
           "name": "interviewer_earnings_interviewer_id_interviewers_id_fk",
           "tableFrom": "interviewer_earnings",
-          "tableTo": "interviewers",
           "columnsFrom": [
             "interviewer_id"
           ],
+          "tableTo": "interviewers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "interviewer_earnings_session_id_interview_sessions_id_fk": {
           "name": "interviewer_earnings_session_id_interview_sessions_id_fk",
           "tableFrom": "interviewer_earnings",
-          "tableTo": "interview_sessions",
           "columnsFrom": [
             "session_id"
           ],
+          "tableTo": "interview_sessions",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "interviewer_earnings_payment_id_payments_id_fk": {
           "name": "interviewer_earnings_payment_id_payments_id_fk",
           "tableFrom": "interviewer_earnings",
-          "tableTo": "payments",
           "columnsFrom": [
             "payment_id"
           ],
+          "tableTo": "payments",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "interviewer_earnings_session_id_unique": {
           "name": "interviewer_earnings_session_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "session_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "interviewer_payouts": {
+    "public.interviewer_payouts": {
       "name": "interviewer_payouts",
       "schema": "",
       "columns": {
@@ -879,34 +898,37 @@
         "interviewer_payouts_interviewer_id_interviewers_id_fk": {
           "name": "interviewer_payouts_interviewer_id_interviewers_id_fk",
           "tableFrom": "interviewer_payouts",
-          "tableTo": "interviewers",
           "columnsFrom": [
             "interviewer_id"
           ],
+          "tableTo": "interviewers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "interviewer_payouts_released_by_admin_id_admins_id_fk": {
           "name": "interviewer_payouts_released_by_admin_id_admins_id_fk",
           "tableFrom": "interviewer_payouts",
-          "tableTo": "admins",
           "columnsFrom": [
             "released_by_admin_id"
           ],
+          "tableTo": "admins",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "interviewer_reviews": {
+    "public.interviewer_reviews": {
       "name": "interviewer_reviews",
       "schema": "",
       "columns": {
@@ -987,47 +1009,50 @@
         "interviewer_reviews_session_id_interview_sessions_id_fk": {
           "name": "interviewer_reviews_session_id_interview_sessions_id_fk",
           "tableFrom": "interviewer_reviews",
-          "tableTo": "interview_sessions",
           "columnsFrom": [
             "session_id"
           ],
+          "tableTo": "interview_sessions",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "interviewer_reviews_job_seeker_id_job_seekers_id_fk": {
           "name": "interviewer_reviews_job_seeker_id_job_seekers_id_fk",
           "tableFrom": "interviewer_reviews",
-          "tableTo": "job_seekers",
           "columnsFrom": [
             "job_seeker_id"
           ],
+          "tableTo": "job_seekers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "interviewer_reviews_interviewer_id_interviewers_id_fk": {
           "name": "interviewer_reviews_interviewer_id_interviewers_id_fk",
           "tableFrom": "interviewer_reviews",
-          "tableTo": "interviewers",
           "columnsFrom": [
             "interviewer_id"
           ],
+          "tableTo": "interviewers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "interviewers": {
+    "public.interviewers": {
       "name": "interviewers",
       "schema": "",
       "columns": {
@@ -1190,29 +1215,32 @@
         "interviewers_user_id_users_id_fk": {
           "name": "interviewers_user_id_users_id_fk",
           "tableFrom": "interviewers",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "interviewers_user_id_unique": {
           "name": "interviewers_user_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "user_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "job_seekers": {
+    "public.job_seekers": {
       "name": "job_seekers",
       "schema": "",
       "columns": {
@@ -1291,29 +1319,32 @@
         "job_seekers_user_id_users_id_fk": {
           "name": "job_seekers_user_id_users_id_fk",
           "tableFrom": "job_seekers",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "job_seekers_user_id_unique": {
           "name": "job_seekers_user_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "user_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "package_deals": {
+    "public.package_deals": {
       "name": "package_deals",
       "schema": "",
       "columns": {
@@ -1377,9 +1408,12 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "package_purchases": {
+    "public.package_purchases": {
       "name": "package_purchases",
       "schema": "",
       "columns": {
@@ -1452,47 +1486,50 @@
         "package_purchases_job_seeker_id_job_seekers_id_fk": {
           "name": "package_purchases_job_seeker_id_job_seekers_id_fk",
           "tableFrom": "package_purchases",
-          "tableTo": "job_seekers",
           "columnsFrom": [
             "job_seeker_id"
           ],
+          "tableTo": "job_seekers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "package_purchases_package_id_package_deals_id_fk": {
           "name": "package_purchases_package_id_package_deals_id_fk",
           "tableFrom": "package_purchases",
-          "tableTo": "package_deals",
           "columnsFrom": [
             "package_id"
           ],
+          "tableTo": "package_deals",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "package_purchases_payment_id_payments_id_fk": {
           "name": "package_purchases_payment_id_payments_id_fk",
           "tableFrom": "package_purchases",
-          "tableTo": "payments",
           "columnsFrom": [
             "payment_id"
           ],
+          "tableTo": "payments",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "payments": {
+    "public.payments": {
       "name": "payments",
       "schema": "",
       "columns": {
@@ -1620,55 +1657,58 @@
         "payments_session_id_interview_sessions_id_fk": {
           "name": "payments_session_id_interview_sessions_id_fk",
           "tableFrom": "payments",
-          "tableTo": "interview_sessions",
           "columnsFrom": [
             "session_id"
           ],
+          "tableTo": "interview_sessions",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "payments_job_seeker_id_job_seekers_id_fk": {
           "name": "payments_job_seeker_id_job_seekers_id_fk",
           "tableFrom": "payments",
-          "tableTo": "job_seekers",
           "columnsFrom": [
             "job_seeker_id"
           ],
+          "tableTo": "job_seekers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "payments_interviewer_id_interviewers_id_fk": {
           "name": "payments_interviewer_id_interviewers_id_fk",
           "tableFrom": "payments",
-          "tableTo": "interviewers",
           "columnsFrom": [
             "interviewer_id"
           ],
+          "tableTo": "interviewers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "payments_session_id_unique": {
           "name": "payments_session_id_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "session_id"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "question_bank": {
+    "public.question_bank": {
       "name": "question_bank",
       "schema": "",
       "columns": {
@@ -1760,47 +1800,50 @@
         "question_bank_industry_id_industries_id_fk": {
           "name": "question_bank_industry_id_industries_id_fk",
           "tableFrom": "question_bank",
-          "tableTo": "industries",
           "columnsFrom": [
             "industry_id"
           ],
+          "tableTo": "industries",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "question_bank_contributed_by_user_id_users_id_fk": {
           "name": "question_bank_contributed_by_user_id_users_id_fk",
           "tableFrom": "question_bank",
-          "tableTo": "users",
           "columnsFrom": [
             "contributed_by_user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         },
         "question_bank_approved_by_admin_id_admins_id_fk": {
           "name": "question_bank_approved_by_admin_id_admins_id_fk",
           "tableFrom": "question_bank",
-          "tableTo": "admins",
           "columnsFrom": [
             "approved_by_admin_id"
           ],
+          "tableTo": "admins",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "reschedule_requests": {
+    "public.reschedule_requests": {
       "name": "reschedule_requests",
       "schema": "",
       "columns": {
@@ -1866,34 +1909,37 @@
         "reschedule_requests_session_id_interview_sessions_id_fk": {
           "name": "reschedule_requests_session_id_interview_sessions_id_fk",
           "tableFrom": "reschedule_requests",
-          "tableTo": "interview_sessions",
           "columnsFrom": [
             "session_id"
           ],
+          "tableTo": "interview_sessions",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "reschedule_requests_requested_by_user_id_users_id_fk": {
           "name": "reschedule_requests_requested_by_user_id_users_id_fk",
           "tableFrom": "reschedule_requests",
-          "tableTo": "users",
           "columnsFrom": [
             "requested_by_user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "sample_videos": {
+    "public.sample_videos": {
       "name": "sample_videos",
       "schema": "",
       "columns": {
@@ -1998,47 +2044,50 @@
         "sample_videos_session_id_interview_sessions_id_fk": {
           "name": "sample_videos_session_id_interview_sessions_id_fk",
           "tableFrom": "sample_videos",
-          "tableTo": "interview_sessions",
           "columnsFrom": [
             "session_id"
           ],
+          "tableTo": "interview_sessions",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "set null"
         },
         "sample_videos_industry_id_industries_id_fk": {
           "name": "sample_videos_industry_id_industries_id_fk",
           "tableFrom": "sample_videos",
-          "tableTo": "industries",
           "columnsFrom": [
             "industry_id"
           ],
+          "tableTo": "industries",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "sample_videos_uploaded_by_user_id_users_id_fk": {
           "name": "sample_videos_uploaded_by_user_id_users_id_fk",
           "tableFrom": "sample_videos",
-          "tableTo": "users",
           "columnsFrom": [
             "uploaded_by_user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "session_feedback": {
+    "public.session_feedback": {
       "name": "session_feedback",
       "schema": "",
       "columns": {
@@ -2140,47 +2189,50 @@
         "session_feedback_session_id_interview_sessions_id_fk": {
           "name": "session_feedback_session_id_interview_sessions_id_fk",
           "tableFrom": "session_feedback",
-          "tableTo": "interview_sessions",
           "columnsFrom": [
             "session_id"
           ],
+          "tableTo": "interview_sessions",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "session_feedback_interviewer_id_interviewers_id_fk": {
           "name": "session_feedback_interviewer_id_interviewers_id_fk",
           "tableFrom": "session_feedback",
-          "tableTo": "interviewers",
           "columnsFrom": [
             "interviewer_id"
           ],
+          "tableTo": "interviewers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "session_feedback_job_seeker_id_job_seekers_id_fk": {
           "name": "session_feedback_job_seeker_id_job_seekers_id_fk",
           "tableFrom": "session_feedback",
-          "tableTo": "job_seekers",
           "columnsFrom": [
             "job_seeker_id"
           ],
+          "tableTo": "job_seekers",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "support_tickets": {
+    "public.support_tickets": {
       "name": "support_tickets",
       "schema": "",
       "columns": {
@@ -2242,21 +2294,24 @@
         "support_tickets_user_id_users_id_fk": {
           "name": "support_tickets_user_id_users_id_fk",
           "tableFrom": "support_tickets",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "system_settings": {
+    "public.system_settings": {
       "name": "system_settings",
       "schema": "",
       "columns": {
@@ -2309,29 +2364,32 @@
         "system_settings_updated_by_admin_id_admins_id_fk": {
           "name": "system_settings_updated_by_admin_id_admins_id_fk",
           "tableFrom": "system_settings",
-          "tableTo": "admins",
           "columnsFrom": [
             "updated_by_admin_id"
           ],
+          "tableTo": "admins",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "system_settings_setting_key_unique": {
           "name": "system_settings_setting_key_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "setting_key"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "ticket_messages": {
+    "public.ticket_messages": {
       "name": "ticket_messages",
       "schema": "",
       "columns": {
@@ -2379,34 +2437,37 @@
         "ticket_messages_ticket_id_support_tickets_id_fk": {
           "name": "ticket_messages_ticket_id_support_tickets_id_fk",
           "tableFrom": "ticket_messages",
-          "tableTo": "support_tickets",
           "columnsFrom": [
             "ticket_id"
           ],
+          "tableTo": "support_tickets",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "ticket_messages_sender_id_users_id_fk": {
           "name": "ticket_messages_sender_id_users_id_fk",
           "tableFrom": "ticket_messages",
-          "tableTo": "users",
           "columnsFrom": [
             "sender_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "user_verifications": {
+    "public.user_verifications": {
       "name": "user_verifications",
       "schema": "",
       "columns": {
@@ -2479,34 +2540,37 @@
         "user_verifications_user_id_users_id_fk": {
           "name": "user_verifications_user_id_users_id_fk",
           "tableFrom": "user_verifications",
-          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
+          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "cascade"
         },
         "user_verifications_verified_by_admin_id_admins_id_fk": {
           "name": "user_verifications_verified_by_admin_id_admins_id_fk",
           "tableFrom": "user_verifications",
-          "tableTo": "admins",
           "columnsFrom": [
             "verified_by_admin_id"
           ],
+          "tableTo": "admins",
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "onUpdate": "no action",
+          "onDelete": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+      "uniqueConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     },
-    "users": {
+    "public.users": {
       "name": "users",
       "schema": "",
       "columns": {
@@ -2587,141 +2651,163 @@
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ]
+          ],
+          "nullsNotDistinct": false
         }
-      }
+      },
+      "policies": {},
+      "isRLSEnabled": false,
+      "checkConstraints": {}
     }
   },
   "enums": {
-    "admin_level": {
+    "public.admin_level": {
       "name": "admin_level",
-      "values": {
-        "super_admin": "super_admin",
-        "moderator": "moderator"
-      }
+      "schema": "public",
+      "values": [
+        "super_admin",
+        "moderator"
+      ]
     },
-    "day_of_week": {
+    "public.day_of_week": {
       "name": "day_of_week",
-      "values": {
-        "monday": "monday",
-        "tuesday": "tuesday",
-        "wednesday": "wednesday",
-        "thursday": "thursday",
-        "friday": "friday",
-        "saturday": "saturday",
-        "sunday": "sunday"
-      }
+      "schema": "public",
+      "values": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ]
     },
-    "document_type": {
+    "public.document_type": {
       "name": "document_type",
-      "values": {
-        "nic": "nic",
-        "appointment_letter": "appointment_letter",
-        "employment_letter": "employment_letter",
-        "degree_certificate": "degree_certificate",
-        "bank_statement": "bank_statement",
-        "linkedin_screenshot": "linkedin_screenshot"
-      }
+      "schema": "public",
+      "values": [
+        "nic",
+        "appointment_letter",
+        "employment_letter",
+        "degree_certificate",
+        "bank_statement",
+        "linkedin_screenshot"
+      ]
     },
-    "feedback_type": {
+    "public.feedback_type": {
       "name": "feedback_type",
-      "values": {
-        "interviewer_to_seeker": "interviewer_to_seeker",
-        "seeker_to_interviewer": "seeker_to_interviewer"
-      }
+      "schema": "public",
+      "values": [
+        "interviewer_to_seeker",
+        "seeker_to_interviewer"
+      ]
     },
-    "meeting_platform": {
+    "public.meeting_platform": {
       "name": "meeting_platform",
-      "values": {
-        "zoom": "zoom",
-        "teams": "teams"
-      }
+      "schema": "public",
+      "values": [
+        "zoom",
+        "teams"
+      ]
     },
-    "payment_status": {
+    "public.payment_status": {
       "name": "payment_status",
-      "values": {
-        "pending": "pending",
-        "held": "held",
-        "completed": "completed",
-        "failed": "failed",
-        "refunded": "refunded",
-        "cancelled": "cancelled"
-      }
+      "schema": "public",
+      "values": [
+        "pending",
+        "held",
+        "completed",
+        "failed",
+        "refunded",
+        "cancelled"
+      ]
     },
-    "payout_status": {
+    "public.payout_status": {
       "name": "payout_status",
-      "values": {
-        "pending": "pending",
-        "processing": "processing",
-        "paid": "paid",
-        "failed": "failed"
-      }
+      "schema": "public",
+      "values": [
+        "pending",
+        "processing",
+        "paid",
+        "failed"
+      ]
     },
-    "session_status": {
+    "public.session_status": {
       "name": "session_status",
-      "values": {
-        "pending": "pending",
-        "scheduled": "scheduled",
-        "rescheduled": "rescheduled",
-        "in_progress": "in_progress",
-        "awaiting_confirmation": "awaiting_confirmation",
-        "completed": "completed",
-        "disputed": "disputed",
-        "cancelled": "cancelled",
-        "no_show": "no_show"
-      }
+      "schema": "public",
+      "values": [
+        "pending",
+        "scheduled",
+        "rescheduled",
+        "in_progress",
+        "awaiting_confirmation",
+        "completed",
+        "disputed",
+        "cancelled",
+        "no_show"
+      ]
     },
-    "session_type": {
+    "public.session_type": {
       "name": "session_type",
-      "values": {
-        "behavioral": "behavioral",
-        "technical": "technical",
-        "case_study": "case_study",
-        "mixed": "mixed"
-      }
+      "schema": "public",
+      "values": [
+        "behavioral",
+        "technical",
+        "case_study",
+        "mixed"
+      ]
     },
-    "ticket_priority": {
+    "public.ticket_priority": {
       "name": "ticket_priority",
-      "values": {
-        "low": "low",
-        "medium": "medium",
-        "high": "high",
-        "urgent": "urgent"
-      }
+      "schema": "public",
+      "values": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ]
     },
-    "ticket_status": {
+    "public.ticket_status": {
       "name": "ticket_status",
-      "values": {
-        "open": "open",
-        "in_progress": "in_progress",
-        "resolved": "resolved",
-        "closed": "closed"
-      }
+      "schema": "public",
+      "values": [
+        "open",
+        "in_progress",
+        "resolved",
+        "closed"
+      ]
     },
-    "user_type": {
+    "public.user_type": {
       "name": "user_type",
-      "values": {
-        "job_seeker": "job_seeker",
-        "interviewer": "interviewer",
-        "admin": "admin"
-      }
+      "schema": "public",
+      "values": [
+        "job_seeker",
+        "interviewer",
+        "admin"
+      ]
     },
-    "verification_status": {
+    "public.verification_status": {
       "name": "verification_status",
-      "values": {
-        "pending": "pending",
-        "approved": "approved",
-        "rejected": "rejected"
-      }
+      "schema": "public",
+      "values": [
+        "pending",
+        "approved",
+        "rejected"
+      ]
     }
   },
   "schemas": {},
   "_meta": {
-    "columns": {},
     "schemas": {},
-    "tables": {}
-  }
+    "tables": {},
+    "columns": {}
+  },
+  "id": "529bc689-6728-4f02-83e7-2595b62bb8bc",
+  "prevId": "34c81f57-23aa-407f-841e-9f178df204e6",
+  "sequences": {},
+  "policies": {},
+  "views": {},
+  "roles": {}
 }

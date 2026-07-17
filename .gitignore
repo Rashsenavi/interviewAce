@@ -32,8 +32,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — ignore real secrets, track templates
+.env
+.env.local
+backend/.env
+backend/.env.local
+!.env.local.example
+!backend/.env.example
 
 # vercel
 .vercel
@@ -43,6 +48,7 @@ yarn-error.log*
 next-env.d.ts
 
 # test files and scratch directories
+backend/tests/scratch/
 backend/test-*.js
 backend/test-*.ts
 backend/speed-test.js

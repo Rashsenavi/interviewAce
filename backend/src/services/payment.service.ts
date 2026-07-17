@@ -39,7 +39,7 @@ export const initiatePayment = async (sessionId: number, userId: number) => {
   // Fetch session + job seeker + interviewer details
   const [session] = await db
     .select({
-      id: interviewSessions.id,
+      id: interviewSessions.id, 
       priceAmount: interviewSessions.priceAmount,
       duration: interviewSessions.duration,
       scheduledDate: interviewSessions.scheduledDate,
@@ -838,7 +838,7 @@ export const getPackageBalance = async (userId: number) => {
         sql`expiry_date > NOW()`
       )
     );
-
+  // Sum up all credits from active purchases
   const balance = activePurchases.reduce((sum, p) => sum + p.creditsRemaining, 0);
   return { balance };
 };

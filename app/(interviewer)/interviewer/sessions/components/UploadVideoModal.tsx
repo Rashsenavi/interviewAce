@@ -107,7 +107,7 @@ export function UploadVideoModal({ session, onClose, onSuccess }: UploadVideoMod
         videoDescription: description,
         videoUrl: secureUrl,
         videoType: videoType,
-        durationSeconds: 0, // We can extract this later if needed
+        durationSeconds: 0, // can extract this later if needed
       });
 
       if (response.success) {

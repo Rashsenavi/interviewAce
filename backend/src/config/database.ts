@@ -5,7 +5,10 @@ import dns from "node:dns";
 
 dns.setDefaultResultOrder("ipv4first");
 
-const connectionString = process.env.DATABASE_URL!;
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("FATAL: DATABASE_URL environment variable is not set");
+}
 
 // Singleton pattern to prevent connection exhaustion during hot reloads
 const globalForPostgres = globalThis as unknown as {
@@ -20,10 +23,6 @@ const pool = globalForPostgres.pgPool ?? new Pool({
   idleTimeoutMillis: 10000, // Proactively close idle connections to avoid AWS NAT drops
   connectionTimeoutMillis: 30000, // Wait up to 30s to allow Supabase database wake-up
 });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPostgres.pgPool = pool;
-}
 
 // Log pool errors to surface connection issues quickly
 pool.on("error", (err) => {
