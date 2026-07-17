@@ -67,7 +67,7 @@ InterviewAce is a full-stack web application designed to help Sri Lankan job see
 - **ORM:** Drizzle ORM
 - **Database:** PostgreSQL
 - **Video Sessions:** Zoom Integration (with browser pop-up blocked fallback checks)
-- **Email:** SMTP (Ethereal test mailers)
+
 - **File & Video Storage:** Cloudinary & Supabase storage buckets
 
 ---

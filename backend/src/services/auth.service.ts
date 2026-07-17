@@ -18,7 +18,7 @@ export interface RegisterJobSeekerInput {
   fieldOfStudy?: string;
   targetIndustries?: string[];
   careerGoals?: string;
-}
+} 
 
 export interface RegisterInterviewerInput {
   email: string;

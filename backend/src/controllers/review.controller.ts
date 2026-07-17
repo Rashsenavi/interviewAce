@@ -1,8 +1,5 @@
 import { Request, Response } from "express";
 import * as reviewService from "../services/review.service";
-import { db } from "../config/database";
-import { jobSeekers, interviewers } from "../db/schema";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const submitReviewSchema = z.object({
@@ -23,18 +20,16 @@ export async function submitReview(req: Request, res: Response) {
     const data = submitReviewSchema.parse(req.body);
 
     // Resolve the internal Job Seeker ID from the user's Auth ID
-    const jobSeekerRecord = await db.select().from(jobSeekers).where(eq(jobSeekers.userId, userId));
-    if (!jobSeekerRecord.length) {
+    const jobSeekerId = await reviewService.resolveJobSeekerIdByUserId(userId);
+    if (!jobSeekerId) {
       return res.status(404).json({ error: "Job Seeker profile not found" });
     }
-    const jobSeekerId = jobSeekerRecord[0].id;
 
     // Resolve the internal Interviewer ID from the payload's Interviewer User ID
-    const interviewerRecord = await db.select().from(interviewers).where(eq(interviewers.userId, data.interviewerUserId));
-    if (!interviewerRecord.length) {
+    const interviewerId = await reviewService.resolveInterviewerIdByUserId(data.interviewerUserId);
+    if (!interviewerId) {
       return res.status(404).json({ error: "Interviewer not found" });
     }
-    const interviewerId = interviewerRecord[0].id;
 
     const review = await reviewService.createReview({
       sessionId: data.sessionId,
@@ -65,11 +60,10 @@ export async function getMyReviews(req: Request, res: Response) {
   const userId = (req as any).user.id;
   try {
     // Resolve Interviewer ID
-    const interviewerRecord = await db.select().from(interviewers).where(eq(interviewers.userId, userId));
-    if (!interviewerRecord.length) {
+    const interviewerId = await reviewService.resolveInterviewerIdByUserId(userId);
+    if (!interviewerId) {
       return res.status(404).json({ error: "Interviewer profile not found" });
     }
-    const interviewerId = interviewerRecord[0].id;
 
     const stats = await reviewService.getInterviewerReviewStats(interviewerId);
     res.json({

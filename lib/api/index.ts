@@ -599,6 +599,14 @@ export const publicApi = {
   getTestimonials: async () => {
     return apiClient.get<{ testimonials: any[] }>("/public/testimonials");
   },
+  getStats: async () => {
+    return apiClient.get<{
+      sessionsCompleted: number;
+      verifiedInterviewers: number;
+      averageRating: number;
+      confidenceGain: number;
+    }>("/public/stats");
+  },
 };
 
 export default apiClient;

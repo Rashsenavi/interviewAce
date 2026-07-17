@@ -133,9 +133,7 @@ export const login = async (req: Request, res: Response) => {
     const validatedData = loginSchema.parse(req.body);
 
     // Login
-    console.time("LOGIN_DB_TIME");
     const result = await authService.login(validatedData);
-    console.timeEnd("LOGIN_DB_TIME");
 
     res.json({
       success: true,

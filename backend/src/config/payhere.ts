@@ -1,7 +1,15 @@
 import crypto from "crypto";
 
-const PAYHERE_MERCHANT_ID = process.env.PAYHERE_MERCHANT_ID || "";
-const PAYHERE_MERCHANT_SECRET = process.env.PAYHERE_MERCHANT_SECRET || "";
+const PAYHERE_MERCHANT_ID = process.env.PAYHERE_MERCHANT_ID!;
+const PAYHERE_MERCHANT_SECRET = process.env.PAYHERE_MERCHANT_SECRET!;
+
+if (!PAYHERE_MERCHANT_ID) {
+  throw new Error("FATAL: PAYHERE_MERCHANT_ID environment variable is not set");
+}
+if (!PAYHERE_MERCHANT_SECRET) {
+  throw new Error("FATAL: PAYHERE_MERCHANT_SECRET environment variable is not set");
+}
+
 const PAYHERE_RETURN_URL = process.env.PAYHERE_RETURN_URL || "http://localhost:3000/payment/success";
 const PAYHERE_CANCEL_URL = process.env.PAYHERE_CANCEL_URL || "http://localhost:3000/payment/cancel";
 const PAYHERE_NOTIFY_URL = process.env.PAYHERE_NOTIFY_URL || "http://localhost:3001/api/payments/webhook";

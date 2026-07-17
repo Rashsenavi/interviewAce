@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from "express";
 export interface ApiError extends Error {
   status?: number;
   code?: string;
+  cause?: any;
 }
 
 /**
@@ -44,6 +45,8 @@ export const errorHandler = (
     path: req.path,
     method: req.method,
     body: sanitizedBody,
+    ...(error.cause && { cause: error.cause instanceof Error ? { message: error.cause.message, stack: error.cause.stack } : error.cause }),
+    ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
   });
 
   res.status(status).json({
