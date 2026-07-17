@@ -7,7 +7,7 @@ import { db } from "../config/database";
 import { sql } from "drizzle-orm";
 
 async function migrate() {
-  console.log("🚀 Running PayHere migration...");
+  console.log("Running PayHere migration...");
 
   // 1. Add payout_status enum
   await db.execute(sql`
@@ -16,7 +16,7 @@ async function migrate() {
     EXCEPTION WHEN duplicate_object THEN NULL;
     END $$;
   `);
-  console.log("✅ payout_status enum created (or already exists)");
+  console.log("payout_status enum created (or already exists)");
 
   // 2. Add new columns to payments table
   await db.execute(sql`
@@ -24,7 +24,7 @@ async function migrate() {
       ADD COLUMN IF NOT EXISTS payhere_order_id VARCHAR(100),
       ADD COLUMN IF NOT EXISTS payhere_raw_status INTEGER;
   `);
-  console.log("✅ payments columns added");
+  console.log("payments columns added");
 
   // 3. Create interviewer_earnings table
   await db.execute(sql`
@@ -43,7 +43,7 @@ async function migrate() {
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
-  console.log("✅ interviewer_earnings table created");
+  console.log("interviewer_earnings table created");
 
   // 4. Create interviewer_payouts table
   await db.execute(sql`
@@ -66,7 +66,7 @@ async function migrate() {
       updated_at TIMESTAMP DEFAULT NOW()
     );
   `);
-  console.log("✅ interviewer_payouts table created");
+  console.log("interviewer_payouts table created");
 
   // 5. Add FK from earnings.payout_id → payouts.id (only if not exists)
   await db.execute(sql`
@@ -78,13 +78,13 @@ async function migrate() {
     EXCEPTION WHEN duplicate_object THEN NULL;
     END $$;
   `);
-  console.log("✅ Foreign key fk_earnings_payout added");
+  console.log("Foreign key fk_earnings_payout added");
 
-  console.log("\n🎉 Migration complete!");
+  console.log("\nMigration complete!");
   process.exit(0);
 }
 
 migrate().catch((err) => {
-  console.error("❌ Migration failed:", err);
+  console.error("Migration failed:", err);
   process.exit(1);
 });

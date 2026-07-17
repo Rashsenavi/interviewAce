@@ -454,10 +454,10 @@ export default function InterviewerProfilePage() {
               {interviewer.isVerified ? "Book a Session" : "Verification Pending"}
             </button>
 
-            <button className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-lg font-medium flex items-center justify-center gap-2">
+           {/* <button className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-lg font-medium flex items-center justify-center gap-2">
               <MessageSquare className="w-5 h-5" />
               Send Message
-            </button>
+            </button>*/}
 
             <div className="mt-6 pt-6 border-t border-gray-100 space-y-3 text-sm">
               <div className="flex items-center gap-2 text-gray-600">

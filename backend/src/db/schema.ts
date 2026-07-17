@@ -538,6 +538,7 @@ export const sessionFeedback = pgTable("session_feedback", {
   weaknesses: text("weaknesses").notNull(),
   improvementTips: text("improvement_tips").notNull(),
   generalComments: text("general_comments"),
+  //remarks: text("remarks"),npm run db:generate npm run db:push
 
   // Visibility
   isVisible: boolean("is_visible").notNull().default(true),

@@ -140,7 +140,7 @@ export default function AdminPayoutsPage() {
       const res = await paymentApi.releasePayouts(ids, month);
       if (res.success) {
         const released = (res.data as any)?.released?.length ?? ids.length;
-        setSuccessMsg(`✅ Successfully released payouts for ${released} interviewer(s).`);
+        setSuccessMsg(`Successfully released payouts for ${released} interviewer(s).`);
         await loadPayouts();
       } else {
         setError("Failed to release payouts.");
